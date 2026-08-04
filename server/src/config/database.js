@@ -71,4 +71,5 @@ module.exports = {
   connectMongoDB,
   connectMySQL,
   closeDatabaseConnections,
+  getMySQLPool,
 };

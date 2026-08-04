@@ -1,26 +1,14 @@
 require("dotenv").config({ quiet: true });
 
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-const morgan = require("morgan");
+const { createApp } = require("./src/app");
 const {
   connectMongoDB,
   connectMySQL,
   closeDatabaseConnections,
 } = require("./src/config/database");
 
-const app = express();
+const app = createApp();
 const port = Number(process.env.PORT || 5000);
-
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
-app.use(morgan("dev"));
-
-app.get("/health", (_request, response) => {
-  response.status(200).json({ status: "ok" });
-});
 
 async function startServer() {
   try {
@@ -47,8 +35,4 @@ async function startServer() {
   }
 }
 
-if (require.main === module) {
-  startServer();
-}
-
-module.exports = { app, startServer };
+startServer();

@@ -1,0 +1,555 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        try {
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        "colors": {
+                            "secondary-container": "#d9dff5",
+                            "background": "#f9f9ff",
+                            "primary": "#6d5ef5",
+                            "secondary-fixed-dim": "#c0c6db",
+                            "surface-container": "#e7eefe",
+                            "outline": "#787586",
+                            "on-secondary": "#ffffff",
+                            "on-surface": "#151c27",
+                            "on-primary": "#ffffff",
+                            "tertiary-container": "#b65e00",
+                            "surface-container-low": "#f0f3ff",
+                            "primary-fixed-dim": "#c5c0ff",
+                            "on-tertiary": "#ffffff",
+                            "tertiary": "#914a00",
+                            "surface-bright": "#f9f9ff",
+                            "on-primary-fixed": "#150067",
+                            "surface-variant": "#dce2f3",
+                            "secondary-fixed": "#dce2f7",
+                            "primary-fixed": "#e4dfff",
+                            "on-secondary-container": "#5c6274",
+                            "surface-dim": "#d3daea",
+                            "on-surface-variant": "#474555",
+                            "surface-container-highest": "#dce2f3",
+                            "outline-variant": "#c8c4d7",
+                            "on-tertiary-fixed": "#301400",
+                            "error": "#ba1a1a",
+                            "surface-container-lowest": "#ffffff",
+                            "surface": "#f9f9ff",
+                            "inverse-on-surface": "#ebf1ff",
+                            "surface-container-high": "#e2e8f8",
+                            "on-tertiary-container": "#fffeff",
+                            "on-error": "#ffffff",
+                            "tertiary-fixed": "#ffdcc5",
+                            "on-secondary-fixed": "#141b2b",
+                            "on-primary-fixed-variant": "#3c24c5",
+                            "inverse-surface": "#2a313d",
+                            "tertiary-fixed-dim": "#ffb782",
+                            "inverse-primary": "#c5c0ff",
+                            "on-error-container": "#93000a",
+                            "on-primary-container": "#fffdff",
+                            "on-background": "#151c27",
+                            "error-container": "#ffdad6",
+                            "secondary": "#575e70",
+                            "on-tertiary-fixed-variant": "#703800",
+                            "on-secondary-fixed-variant": "#404758",
+                            "primary-container": "#6d5ef5",
+                            "surface-tint": "#5544dc"
+                        },
+                        "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "xxl": "24px",
+                            "full": "9999px"
+                        },
+                        "spacing": {
+                            "sm": "8px",
+                            "md": "16px",
+                            "lg": "24px",
+                            "container-max": "1440px",
+                            "gutter": "20px",
+                            "xs": "4px",
+                            "unit": "4px",
+                            "xl": "32px"
+                        },
+                        "fontFamily": {
+                            "headline-lg": ["Plus Jakarta Sans"],
+                            "body-md": ["Inter"],
+                            "label-sm": ["Inter"],
+                            "display-lg": ["Plus Jakarta Sans"],
+                            "label-md": ["Inter"],
+                            "title-md": ["Inter"],
+                            "body-sm": ["Inter"],
+                            "headline-lg-mobile": ["Plus Jakarta Sans"]
+                        },
+                        "fontSize": {
+                            "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                            "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                            "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                            "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                            "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                            "title-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                            "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                            "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                        },
+                        "animation": {
+                            "reveal-up": "reveal-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+                            "ambient-glow": "ambient-glow 8s ease-in-out infinite",
+                        },
+                        "keyframes": {
+                            "reveal-up": {
+                                "0%": { opacity: "0", transform: "translateY(20px)" },
+                                "100%": { opacity: "1", transform: "translateY(0)" },
+                            },
+                            "ambient-glow": {
+                                "0%, 100%": { opacity: "0.4", transform: "scale(1)" },
+                                "50%": { opacity: "0.8", transform: "scale(1.1)" },
+                            }
+                        }
+                    },
+                },
+            }
+        } catch (_e) {}
+    </script>
+<style>
+        .reveal-item { opacity: 0; }
+        .stagger-1 { animation: reveal-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards; }
+        .stagger-2 { animation: reveal-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards; }
+        .stagger-3 { animation: reveal-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards; }
+        
+        .gradient-heading {
+            background: linear-gradient(135deg, #6d5ef5 0%, #5442db 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hidden-pane { display: none !important; }
+        .fade-slide-active { animation: reveal-up 0.4s ease-out forwards; }
+        
+        input:focus {
+            box-shadow: 0 0 0 4px rgba(109, 94, 245, 0.1);
+        }
+
+        .otp-input::-webkit-inner-spin-button,
+        .otp-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="bg-background font-body-md text-on-surface overflow-hidden">
+<main class="flex h-screen w-full">
+<!-- Left Panel: Authentication (50%) -->
+<section class="w-full md:w-1/2 h-full bg-surface-container-lowest flex flex-col justify-center px-xl md:px-lg relative z-10 overflow-y-auto py-md">
+<div class="max-w-[440px] mx-auto w-full pb-xl">
+<div class="mb-xl relative">
+<div class="absolute -top-10 -left-10 w-48 h-48 bg-primary/10 rounded-full blur-[60px] animate-ambient-glow -z-10 pointer-events-none"></div>
+<div class="mb-md flex items-center gap-sm reveal-item stagger-1">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 bg-primary-container rounded-lg flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+</div>
+<span class="font-headline-lg-mobile text-primary">SupportPilot</span>
+</div>
+</div>
+</div>
+<!-- Main Auth Flow Container -->
+<div id="auth-flow-container">
+<!-- Segmented Toggle -->
+<div class="mb-xl" id="auth-header-toggle">
+<div class="bg-surface-container-low p-1 rounded-full flex relative h-12 w-full border border-outline-variant/30">
+<div class="absolute h-[calc(100%-8px)] w-[calc(50%-4px)] bg-primary-container rounded-full top-1 left-1 transition-transform duration-300 ease-out shadow-md" id="toggle-indicator"></div>
+<button class="flex-1 z-10 font-label-md transition-colors text-on-primary-container" id="btn-individual" onclick="switchTab('individual')">Individual</button>
+<button class="flex-1 z-10 font-label-md transition-colors text-on-surface-variant" id="btn-company" onclick="switchTab('company')">Company</button>
+</div>
+</div>
+<!-- Individual Form Container -->
+<div class="fade-slide-active space-y-lg" id="pane-individual">
+<div class="space-y-sm">
+<label class="block font-label-md text-on-surface-variant">Email Address</label>
+<input class="w-full px-md rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md py-md" placeholder="yourname@gmail.com" type="email">
+</div>
+<div class="space-y-sm">
+<div class="flex justify-between items-center">
+<label class="block font-label-md text-on-surface-variant">Password</label>
+<button class="text-primary font-label-sm hover:underline" onclick="startForgotPassword()">Forgot Password?</button>
+</div>
+<div class="relative">
+<input class="w-full px-md rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md pr-12 py-md" id="pass-ind" placeholder="••••••••" type="password">
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant hover:text-primary transition-colors" onclick="togglePass('pass-ind')">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<input class="rounded border-outline-variant text-primary focus:ring-primary h-4 w-4" id="remember-ind" type="checkbox">
+<label class="font-body-sm text-on-surface-variant select-none" for="remember-ind">Remember Me</label>
+</div>
+<button class="w-full bg-primary-container text-on-primary py-md rounded-xl font-title-md hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-primary/20">
+                        Sign In
+                    </button>
+</div>
+<!-- Company Form Container -->
+<div class="hidden-pane space-y-lg" id="pane-company">
+<!-- Company Sign In -->
+<div class="space-y-lg" id="company-signin-view">
+<div class="space-y-sm">
+<label class="block font-label-md text-on-surface-variant">Business Email</label>
+<input class="w-full px-md rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md py-md" placeholder="admin@company.com" type="email">
+</div>
+<div class="space-y-sm">
+<div class="flex justify-between items-center">
+<label class="block font-label-md text-on-surface-variant">Password</label>
+<button class="text-primary font-label-sm hover:underline" onclick="startForgotPassword()">Forgot Password?</button>
+</div>
+<div class="relative">
+<input class="w-full px-md rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md pr-12 py-md" id="pass-comp" placeholder="••••••••" type="password">
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant hover:text-primary" onclick="togglePass('pass-comp')">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<input class="rounded border-outline-variant text-primary focus:ring-primary h-4 w-4" id="remember-comp" type="checkbox">
+<label class="font-body-sm text-on-surface-variant" for="remember-comp">Remember Me</label>
+</div>
+<button class="w-full bg-primary-container text-on-primary py-md rounded-xl font-title-md hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-primary/20">
+                            Company Sign In
+                        </button>
+<div class="text-center">
+<button class="text-primary font-label-md hover:underline" onclick="toggleCompanyMode('register')">Register Company</button>
+</div>
+</div>
+<!-- Company Registration -->
+<div class="hidden-pane space-y-lg" id="company-register-view">
+<div class="grid grid-cols-2 gap-md">
+<div class="space-y-sm">
+<label class="block font-label-md text-on-surface-variant">Company Name</label>
+<input class="w-full px-md py-sm rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md" placeholder="Acme Inc." type="text">
+</div>
+<div class="space-y-sm">
+<label class="block font-label-md text-on-surface-variant">Business Type</label>
+<select class="w-full px-md py-sm rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md">
+<option>SaaS</option>
+<option>E-commerce</option>
+<option>Fintech</option>
+<option>Healthcare</option>
+</select>
+</div>
+</div>
+<div class="space-y-sm">
+<label class="block font-label-md text-on-surface-variant">Business Email</label>
+<input class="w-full px-md py-sm rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md" placeholder="admin@company.com" type="email">
+</div>
+<div class="grid grid-cols-2 gap-md">
+<div class="space-y-sm">
+<label class="block font-label-md text-on-surface-variant">Password</label>
+<input class="w-full px-md py-sm rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md" type="password">
+</div>
+<div class="space-y-sm">
+<label class="block font-label-md text-on-surface-variant">Confirm Password</label>
+<input class="w-full px-md py-sm rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md" type="password">
+</div>
+</div>
+<button class="w-full bg-primary-container text-on-primary py-md rounded-xl font-title-md hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-primary/20">
+                            Register Company
+                        </button>
+<div class="text-center">
+<button class="text-primary font-label-md hover:underline" onclick="toggleCompanyMode('signin')">Back to Sign In</button>
+</div>
+</div>
+</div>
+<!-- Forgot Password Step 1: Verify Email -->
+<div class="hidden-pane space-y-lg" id="pane-forgot-1">
+<div class="space-y-xs">
+<h2 class="font-headline-lg-mobile text-on-surface">Forgot Password?</h2>
+<p class="text-on-surface-variant font-body-sm">Enter your email address and we'll send you an OTP code to reset your password.</p>
+</div>
+<div class="space-y-sm">
+<label class="block font-label-md text-on-surface-variant">Email Address</label>
+<input class="w-full px-md rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md py-md" placeholder="yourname@gmail.com" type="email">
+</div>
+<button class="w-full bg-primary-container text-on-primary py-md rounded-xl font-title-md hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-primary/20" onclick="goToForgotStep(2)">
+                        Send OTP
+                    </button>
+<div class="text-center">
+<button class="text-on-surface-variant font-label-md hover:text-primary flex items-center justify-center gap-1 mx-auto" onclick="resetToLogin()">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to Login
+                        </button>
+</div>
+</div>
+<!-- Forgot Password Step 2: OTP Verification -->
+<div class="hidden-pane space-y-lg" id="pane-forgot-2">
+<div class="space-y-xs">
+<h2 class="font-headline-lg-mobile text-on-surface">Verify Identity</h2>
+<p class="text-on-surface-variant font-body-sm">We've sent a 6-digit code to <span class="font-semibold text-on-surface">yourname@gmail.com</span></p>
+</div>
+<div class="flex justify-between gap-2" id="otp-inputs">
+<input class="otp-input w-12 h-14 text-center text-title-md border border-outline-variant rounded-lg bg-surface outline-none focus:border-primary transition-all" maxlength="1" type="number">
+<input class="otp-input w-12 h-14 text-center text-title-md border border-outline-variant rounded-lg bg-surface outline-none focus:border-primary transition-all" maxlength="1" type="number">
+<input class="otp-input w-12 h-14 text-center text-title-md border border-outline-variant rounded-lg bg-surface outline-none focus:border-primary transition-all" maxlength="1" type="number">
+<input class="otp-input w-12 h-14 text-center text-title-md border border-outline-variant rounded-lg bg-surface outline-none focus:border-primary transition-all" maxlength="1" type="number">
+<input class="otp-input w-12 h-14 text-center text-title-md border border-outline-variant rounded-lg bg-surface outline-none focus:border-primary transition-all" maxlength="1" type="number">
+<input class="otp-input w-12 h-14 text-center text-title-md border border-outline-variant rounded-lg bg-surface outline-none focus:border-primary transition-all" maxlength="1" type="number">
+</div>
+<div class="text-center">
+<p class="text-on-surface-variant font-body-sm" id="timer-text">Resend OTP in <span class="font-medium text-primary">00:30</span></p>
+<button class="hidden text-primary font-label-md hover:underline" id="resend-btn" onclick="startTimer()">Resend OTP</button>
+</div>
+<button class="w-full bg-primary-container text-on-primary py-md rounded-xl font-title-md hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-primary/20" onclick="goToForgotStep(3)">
+                        Verify
+                    </button>
+</div>
+<!-- Forgot Password Step 3: Reset Password -->
+<div class="hidden-pane space-y-lg" id="pane-forgot-3">
+<div class="space-y-xs">
+<h2 class="font-headline-lg-mobile text-on-surface">Set New Password</h2>
+<p class="text-on-surface-variant font-body-sm">Choose a strong password with at least 8 characters.</p>
+</div>
+<div class="space-y-sm">
+<label class="block font-label-md text-on-surface-variant">New Password</label>
+<div class="relative">
+<input class="w-full px-md rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md pr-12 py-md" id="new-pass" placeholder="••••••••" type="password">
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant hover:text-primary transition-colors" onclick="togglePass('new-pass')">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+<div class="flex gap-1 mt-2">
+<div class="h-1 flex-1 rounded-full bg-primary"></div>
+<div class="h-1 flex-1 rounded-full bg-primary"></div>
+<div class="h-1 flex-1 rounded-full bg-primary/20"></div>
+<div class="h-1 flex-1 rounded-full bg-primary/20"></div>
+</div>
+</div>
+<div class="space-y-sm">
+<label class="block font-label-md text-on-surface-variant">Confirm Password</label>
+<div class="relative">
+<input class="w-full px-md rounded-lg border border-outline-variant bg-surface outline-none focus:border-primary transition-all text-body-md pr-12 py-md" id="confirm-pass" placeholder="••••••••" type="password">
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant hover:text-primary transition-colors" onclick="togglePass('confirm-pass')">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<button class="w-full bg-primary-container text-on-primary py-md rounded-xl font-title-md hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-primary/20" onclick="showSuccess()">
+                        Confirm Reset
+                    </button>
+</div>
+<!-- Google Button (Hidden in recovery flow) -->
+<div class="mt-lg transition-all duration-300" id="google-auth-container">
+<button class="w-full flex items-center justify-center gap-sm border border-outline-variant bg-surface rounded-xl font-label-md hover:bg-surface-container-low transition-colors py-md">
+<img alt="Google" class="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBB05UOxna3Fe3gYFOMoStsVFjh9HPYDPXs3XDAGh3ZcVFCJPlKqFUGqkxfsUuoMJEg1MnCjQBHxcNeuAxFBkTDz7EBc-GuvLLvSBCZCQE-xlIzBWJ-wrBcRuqQgPbg-7YctXy065b2thPW-qShxJ6bDr9FsCmpCmI2yz73ClrfBrWweAUh5abbDZZCVQG2YW-MdZEsnifMLpDtN7mhxsev9YLqZiwiLQOaYrBp0L5920p3f2Me8aRP">
+                        Continue with Google
+                    </button>
+</div>
+</div>
+<div class="mt-xl text-center" id="terms-container">
+<p class="font-body-sm text-on-surface-variant">
+                    By continuing, you agree to SupportPilot's <a class="text-primary hover:underline" href="#">Terms of Service</a> and <a class="text-primary hover:underline" href="#">Privacy Policy</a>.
+                </p>
+</div>
+</div>
+</section>
+<!-- Right Panel: Product Showcase (50%) -->
+<section class="hidden md:block md:w-1/2 h-full relative overflow-hidden bg-primary">
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover opacity-90" src="https://lh3.googleusercontent.com/aida/AP1WRLsvlrUM4VeuTXMZ7AeAr8Hin93szHNqJkxCUpVCjrgqoXDpZ0O_Si7Q89-4675laFfLbwC871xyvCNUKdrDPnRb5H9gtMtkMiQeSbYKAOOLKL_l_eXwZUvb2MplteEf1Uw2MiLKTQjLGflJBCvb0zfmfqs3_xBICUNCe8SFv-F82CBuWNtZVDJmIMnGLsy7Wu07zIu5Vwwhq-pUIpBb9xmxOH5OCrBcyx3PRdzuqRwPGWJ1GycuNVvO8A">
+</div>
+<div class="absolute inset-0 flex items-end p-xl bg-gradient-to-t from-primary/60 to-transparent">
+<div class="bg-white/20 backdrop-blur-xl border border-white/30 p-xl rounded-xxl max-w-[520px] shadow-2xl">
+<div class="flex items-center gap-sm mb-md">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<h3 class="font-headline-lg-mobile text-white">SupportPilot AI</h3>
+</div>
+<p class="text-white/90 font-body-md mb-lg leading-relaxed">
+                    Join 2,000+ enterprises optimizing their customer support workflow with our intelligent pilot assistant. From ticketing management to real-time agent workspace, we've got you covered.
+                </p>
+<div class="flex gap-lg">
+<div class="flex -space-x-3">
+<img alt="User" class="w-10 h-10 rounded-full border-2 border-white/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbZZwLdr-5P5qEjXnMf8j8nxT_blX4s6TCxYpSPqQBqv20yAd4Qtvqn2smIHayvbMGC6Z3JxW188JzunRokIY-gEx3HS2BvK4xjjoybVbAX-Axez5yiRW5mVLOPtQCNVRSkiWPIFyJoIiZanhlQYpwTigZ7ZIhKURzJry8gfTuxcsS0KS0TroAcirVIoyOE-eAut2U2rGhkNBKJai_V3vrlkqfiYRN1iL_pSODCTNYKRsJ-HV_iGjn">
+<img alt="User" class="w-10 h-10 rounded-full border-2 border-white/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuALvuWqeQiIBkPY7zpTKyCHjTlLNMJV4BlZuEoxyNePs9scZ4jV8ckC7AnDFT-sDGasEWeTbLOF7TqSI9x_sQ7tS1v5IeWbG3rKDVD0vaztTuh8so3J85dZwVYwlplpkKYMObQKcTQmZXYZDQKdMc46wgTjr9PzcXdIAH4LYRCAiXMdlODmwTk1EUiTWeGId-KP-l6nZXoT62BTQefqV0PotfkNNzLQqw0bvBEgKNLB7NxqDWgLEKvq">
+<img alt="User" class="w-10 h-10 rounded-full border-2 border-white/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApEDlxkCkemcrRSx4JGVWZ8kHXL-6VlyIq_lm5s5Vs7iQHXhgPv2ACWp7rDQOhiLzqBunReuB4CDRxGzty-E9FlJI55Xrmzd_P7SoBu09VyhMvqmW4GuLnkmKFkFZ1pxODjsVdEEosQZIB55nSkng3IaX7u1CiTDEjPeMkXg1776aZhOEn6wLD_PUPj2_7AuQOMSjb7E9YtOZY3PcaDytW--COYpWeZ2x7dRXCtqgDfnmwx4R7G4si">
+</div>
+<div>
+<p class="font-label-md text-white">Trusted by world-class teams</p>
+<div class="flex gap-1 text-white/80">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute -top-40 -right-40 w-96 h-96 bg-primary-fixed-dim/30 rounded-full blur-[120px] animate-pulse"></div>
+<div class="absolute -bottom-40 -left-40 w-96 h-96 bg-secondary-container/20 rounded-full blur-[120px] animate-pulse" style="animation-delay: 1s"></div>
+</section>
+<!-- Success Modal Overlay (Hidden by default) -->
+<div class="hidden-pane fixed inset-0 bg-on-background/40 backdrop-blur-sm z-[100] flex items-center justify-center p-lg" id="success-modal">
+<div class="bg-surface-container-lowest rounded-xxl p-xl max-w-[400px] w-full text-center shadow-2xl border border-outline-variant/20 scale-90 fade-slide-active">
+<div class="w-20 h-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-lg">
+<span class="material-symbols-outlined text-[48px]">check_circle</span>
+</div>
+<h3 class="font-headline-lg-mobile text-on-surface mb-sm">Success!</h3>
+<p class="text-on-surface-variant font-body-md mb-xl">Your password has been reset successfully. You can now log in with your new password.</p>
+<button class="w-full bg-primary-container text-on-primary py-md rounded-xl font-title-md hover:opacity-90 transition-all shadow-lg shadow-primary/20" onclick="resetToLogin()">
+                Back to Sign In
+            </button>
+</div>
+</div>
+</main>
+<script>
+    function switchTab(type) {
+        const indicator = document.getElementById('toggle-indicator');
+        const paneInd = document.getElementById('pane-individual');
+        const paneComp = document.getElementById('pane-company');
+        const btnInd = document.getElementById('btn-individual');
+        const btnComp = document.getElementById('btn-company');
+
+        if (type === 'individual') {
+            indicator.style.transform = 'translateX(0)';
+            btnInd.classList.replace('text-on-surface-variant', 'text-on-primary-container');
+            btnComp.classList.replace('text-on-primary-container', 'text-on-surface-variant');
+            
+            paneComp.classList.add('hidden-pane');
+            paneInd.classList.remove('hidden-pane');
+            paneInd.classList.add('fade-slide-active');
+        } else {
+            indicator.style.transform = 'translateX(100%)';
+            btnInd.classList.replace('text-on-primary-container', 'text-on-surface-variant');
+            btnComp.classList.replace('text-on-surface-variant', 'text-on-primary-container');
+            
+            paneInd.classList.add('hidden-pane');
+            paneComp.classList.remove('hidden-pane');
+            paneComp.classList.add('fade-slide-active');
+            toggleCompanyMode('signin', true);
+        }
+    }
+
+    function toggleCompanyMode(mode) {
+        const signinView = document.getElementById('company-signin-view');
+        const registerView = document.getElementById('company-register-view');
+        
+        if (mode === 'register') {
+            signinView.classList.add('hidden-pane');
+            registerView.classList.remove('hidden-pane');
+            registerView.classList.add('fade-slide-active');
+        } else {
+            registerView.classList.add('hidden-pane');
+            signinView.classList.remove('hidden-pane');
+            signinView.classList.add('fade-slide-active');
+        }
+    }
+
+    function togglePass(id) {
+        const el = document.getElementById(id);
+        el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    let timerInterval;
+
+    function startForgotPassword() {
+        document.getElementById('pane-individual').classList.add('hidden-pane');
+        document.getElementById('pane-company').classList.add('hidden-pane');
+        document.getElementById('auth-header-toggle').classList.add('hidden-pane');
+        document.getElementById('google-auth-container').classList.add('hidden-pane');
+        
+        const step1 = document.getElementById('pane-forgot-1');
+        step1.classList.remove('hidden-pane');
+        step1.classList.add('fade-slide-active');
+    }
+
+    function goToForgotStep(step) {
+        document.getElementById('pane-forgot-1').classList.add('hidden-pane');
+        document.getElementById('pane-forgot-2').classList.add('hidden-pane');
+        document.getElementById('pane-forgot-3').classList.add('hidden-pane');
+
+        const target = document.getElementById(`pane-forgot-${step}`);
+        target.classList.remove('hidden-pane');
+        target.classList.add('fade-slide-active');
+
+        if (step === 2) {
+            startTimer();
+            initOtpLogic();
+        }
+    }
+
+    function initOtpLogic() {
+        const inputs = document.querySelectorAll('.otp-input');
+        inputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                if (e.target.value.length === 1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
+        });
+        setTimeout(() => inputs[0] && inputs[0].focus(), 100);
+    }
+
+    function startTimer() {
+        let timeLeft = 30;
+        const timerText = document.getElementById('timer-text');
+        const resendBtn = document.getElementById('resend-btn');
+        
+        timerText.classList.remove('hidden');
+        resendBtn.classList.add('hidden');
+        
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            const secs = timeLeft < 10 ? `0${timeLeft}` : timeLeft;
+            timerText.querySelector('span').innerText = `00:${secs}`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                timerText.classList.add('hidden');
+                resendBtn.classList.remove('hidden');
+            }
+        }, 1000);
+    }
+
+    function showSuccess() {
+        document.getElementById('success-modal').classList.remove('hidden-pane');
+    }
+
+    function resetToLogin() {
+        document.getElementById('pane-forgot-1').classList.add('hidden-pane');
+        document.getElementById('pane-forgot-2').classList.add('hidden-pane');
+        document.getElementById('pane-forgot-3').classList.add('hidden-pane');
+        document.getElementById('success-modal').classList.add('hidden-pane');
+
+        document.getElementById('auth-header-toggle').classList.remove('hidden-pane');
+        document.getElementById('google-auth-container').classList.remove('hidden-pane');
+
+        switchTab('individual');
+        clearInterval(timerInterval);
+    }
+
+    // Initialize initial state on load
+    window.onload = () => {
+        // Ensure only individual login is visible
+        document.getElementById('pane-individual').classList.remove('hidden-pane');
+        document.getElementById('pane-company').classList.add('hidden-pane');
+        document.getElementById('pane-forgot-1').classList.add('hidden-pane');
+        document.getElementById('pane-forgot-2').classList.add('hidden-pane');
+        document.getElementById('pane-forgot-3').classList.add('hidden-pane');
+        document.getElementById('success-modal').classList.add('hidden-pane');
+        document.getElementById('auth-header-toggle').classList.remove('hidden-pane');
+        document.getElementById('google-auth-container').classList.remove('hidden-pane');
+    };
+</script>
+
+
+</body></html>
