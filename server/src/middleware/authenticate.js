@@ -25,5 +25,18 @@ function authenticate(request, response, next) {
   }
 }
 
-module.exports = { authenticate };
+function requireAccountType(expectedAccountType) {
+  return function accountTypeGuard(request, response, next) {
+    if (request.auth?.accountType !== expectedAccountType) {
+      return response.status(403).json({
+        success: false,
+        message: "This account cannot access the requested portal",
+        code: "ACCOUNT_TYPE_FORBIDDEN",
+      });
+    }
 
+    return next();
+  };
+}
+
+module.exports = { authenticate, requireAccountType };

@@ -7,7 +7,10 @@ export interface LoginCredentials {
 }
 
 export interface AuthUser {
+  accountType: LoginMode;
   userId: number | string;
+  companyId?: number | string;
+  companyName?: string;
   email: string;
   onlineStatus?: string;
   roleName: string;

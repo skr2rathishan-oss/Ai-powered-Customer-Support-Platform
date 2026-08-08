@@ -2,6 +2,7 @@ const EMAIL_PATTERN =
   /^(?!.*\.\.)[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s])[\s\S]{8,128}$/;
+const ACCOUNT_TYPES = new Set(["individual", "company"]);
 
 function validateSignInPayload(payload) {
   const errors = [];
@@ -18,6 +19,22 @@ function validateSignInPayload(payload) {
       ? payload.email.trim().toLowerCase()
       : "";
   const password = typeof payload.password === "string" ? payload.password : "";
+  const accountType =
+    typeof payload.accountType === "string"
+      ? payload.accountType.trim().toLowerCase()
+      : "";
+
+  if (!accountType) {
+    errors.push({
+      field: "accountType",
+      message: "Account type is required",
+    });
+  } else if (!ACCOUNT_TYPES.has(accountType)) {
+    errors.push({
+      field: "accountType",
+      message: "Account type must be individual or company",
+    });
+  }
 
   if (!email) {
     errors.push({ field: "email", message: "Email is required" });
@@ -39,7 +56,7 @@ function validateSignInPayload(payload) {
     });
   }
 
-  return { value: { email, password }, errors };
+  return { value: { accountType, email, password }, errors };
 }
 
 module.exports = { validateSignInPayload };

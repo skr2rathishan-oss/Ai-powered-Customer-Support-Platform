@@ -1,8 +1,6 @@
-import type { LoginCredentials, LoginResult } from "../types/auth";
+import type { LoginCredentials, LoginMode, LoginResult } from "../types/auth";
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000"
-).replace(/\/$/, "");
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "");
 
 interface SignInResponse {
   success: boolean;
@@ -29,7 +27,10 @@ export class AuthenticationError extends Error {
   }
 }
 
-async function signIn(credentials: LoginCredentials): Promise<LoginResult> {
+async function signIn(
+  accountType: LoginMode,
+  credentials: LoginCredentials,
+): Promise<LoginResult> {
   let response: Response;
 
   try {
@@ -38,6 +39,7 @@ async function signIn(credentials: LoginCredentials): Promise<LoginResult> {
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        accountType,
         email: credentials.email.trim().toLowerCase(),
         password: credentials.password,
       }),
@@ -78,13 +80,13 @@ async function signIn(credentials: LoginCredentials): Promise<LoginResult> {
 export function loginIndividual(
   credentials: LoginCredentials,
 ): Promise<LoginResult> {
-  return signIn(credentials);
+  return signIn("individual", credentials);
 }
 
 export function loginCompany(
   credentials: LoginCredentials,
 ): Promise<LoginResult> {
-  return signIn(credentials);
+  return signIn("company", credentials);
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {

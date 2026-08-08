@@ -26,14 +26,21 @@ function createAuthController(authService) {
 
   function me(request, response) {
     response.set("Cache-Control", "no-store");
+    const user = {
+      accountType: request.auth.accountType,
+      userId: request.auth.userId,
+      email: request.auth.email,
+      roleName: request.auth.roleName,
+      ...(request.auth.companyId && {
+        companyId: request.auth.companyId,
+        companyName: request.auth.companyName,
+      }),
+    };
+
     return response.status(200).json({
       success: true,
       data: {
-        user: {
-          userId: request.auth.sub,
-          email: request.auth.email,
-          roleName: request.auth.roleName,
-        },
+        user,
       },
     });
   }
