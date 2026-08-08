@@ -62,6 +62,28 @@ test("account-type-aware HTTP-only cookie authentication API", async (context) =
         accessToken: createAccessToken(user),
       };
     },
+    async registerCompany(registration) {
+      return {
+        user: {
+          accountType: "company",
+          userId: 91,
+          companyId: 27,
+          companyName: registration.companyName,
+          email: registration.businessEmail,
+          adminEmail: registration.adminEmail,
+          onlineStatus: "Offline",
+          roleName: "Company Admin",
+        },
+        accessToken: createAccessToken({
+          accountType: "company",
+          userId: 91,
+          companyId: 27,
+          companyName: registration.companyName,
+          email: registration.businessEmail,
+          roleName: "Company Admin",
+        }),
+      };
+    },
   };
   const server = await startTestServer(authService);
   context.after(server.close);
@@ -140,6 +162,50 @@ test("account-type-aware HTTP-only cookie authentication API", async (context) =
     assert.equal(body.data.user.accountType, "company");
     assert.equal(body.data.user.companyId, 7);
     assert.equal(body.data.user.companyName, "Acme Support");
+  });
+
+  await context.test("registers a company and sets the auth cookie", async () => {
+    const response = await fetch(`${server.baseUrl}/api/auth/company/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        companyName: "Acme Support",
+        industry: "SaaS",
+        businessEmail: "contact@acme.example",
+        phone: "+1 555 012 3456",
+        website: "https://acme.example",
+        description: "Support software",
+        adminFirstName: "Alex",
+        adminLastName: "Morgan",
+        adminEmail: "admin@acme.example",
+        password: VALID_PASSWORD,
+      }),
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 201);
+    assert.equal(body.data.user.accountType, "company");
+    assert.equal(body.data.user.adminEmail, "admin@acme.example");
+    assert.match(response.headers.get("set-cookie"), /^supportpilot_access=/);
+  });
+
+  await context.test("rejects confirmPassword at the API boundary", async () => {
+    const response = await fetch(`${server.baseUrl}/api/auth/company/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        companyName: "Acme Support",
+        industry: "SaaS",
+        businessEmail: "contact@acme.example",
+        adminFirstName: "Alex",
+        adminLastName: "Morgan",
+        adminEmail: "admin@acme.example",
+        password: VALID_PASSWORD,
+        confirmPassword: VALID_PASSWORD,
+      }),
+    });
+
+    assert.equal(response.status, 422);
   });
 
   await context.test("returns a generic 401 for bad credentials", async () => {

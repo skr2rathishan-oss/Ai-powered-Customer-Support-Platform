@@ -20,6 +20,7 @@ function errorHandler(error, _request, response, _next) {
   };
 
   if (error.code) body.code = error.code;
+  if (Array.isArray(error.errors)) body.errors = error.errors;
 
   if (statusCode === 500 && process.env.NODE_ENV !== "test") {
     console.error(error);
@@ -29,4 +30,3 @@ function errorHandler(error, _request, response, _next) {
 }
 
 module.exports = { notFoundHandler, errorHandler };
-

@@ -1,8 +1,22 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  validateCompanyRegistrationPayload,
   validateSignInPayload,
 } = require("../../src/validators/authValidator");
+
+const VALID_REGISTRATION = {
+  companyName: "Acme Support",
+  industry: "SaaS",
+  businessEmail: " Contact@Acme.Example ",
+  phone: "+1 555 012 3456",
+  website: "https://acme.example",
+  description: "Customer support software",
+  adminFirstName: "Alex",
+  adminLastName: "Morgan",
+  adminEmail: " Admin@Acme.Example ",
+  password: "Correct@123",
+};
 
 test("accepts and normalizes individual sign-in data", () => {
   const result = validateSignInPayload({
@@ -87,4 +101,50 @@ test("rejects arrays and other non-object bodies", () => {
   assert.deepEqual(result.errors, [
     { field: "body", message: "Request body must be a JSON object" },
   ]);
+});
+
+test("accepts and normalizes every company registration field", () => {
+  const result = validateCompanyRegistrationPayload(VALID_REGISTRATION);
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.value.businessEmail, "contact@acme.example");
+  assert.equal(result.value.adminEmail, "admin@acme.example");
+  assert.equal(result.value.companyName, "Acme Support");
+});
+
+test("validates company and administrator emails independently", () => {
+  const result = validateCompanyRegistrationPayload({
+    ...VALID_REGISTRATION,
+    businessEmail: "invalid",
+    adminEmail: "also-invalid",
+  });
+
+  assert.deepEqual(
+    result.errors.map((error) => error.field),
+    ["businessEmail", "adminEmail"],
+  );
+});
+
+test("rejects invalid optional registration fields", () => {
+  const result = validateCompanyRegistrationPayload({
+    ...VALID_REGISTRATION,
+    phone: "abc",
+    website: "javascript:alert(1)",
+    description: "x".repeat(2001),
+  });
+
+  assert.deepEqual(
+    result.errors.map((error) => error.field),
+    ["phone", "website", "description"],
+  );
+});
+
+test("rejects confirmPassword and other unexpected backend fields", () => {
+  const result = validateCompanyRegistrationPayload({
+    ...VALID_REGISTRATION,
+    confirmPassword: "Correct@123",
+  });
+
+  assert.equal(result.errors[0].field, "body");
+  assert.match(result.errors[0].message, /confirmPassword/);
 });

@@ -216,3 +216,47 @@ test("rejects invalid account types before any lookup", async () => {
   );
   assert.equal(lookups, 0);
 });
+
+test("automatically registers an active company administrator", async () => {
+  let persisted;
+  const service = createAuthService({
+    companyModel: {
+      createRegistration: async (registration) => {
+        persisted = registration;
+        return {
+          userId: 91,
+          companyId: 27,
+          companyName: registration.companyName,
+          businessEmail: registration.businessEmail,
+          adminEmail: registration.adminEmail,
+          onlineStatus: "Offline",
+          roleName: "Company Admin",
+        };
+      },
+    },
+    hashPassword: async () => "secure-password-hash",
+    createAccessToken: () => "registration.jwt.token",
+  });
+
+  const result = await service.registerCompany({
+    companyName: "Acme Support",
+    industry: "SaaS",
+    businessEmail: "contact@acme.example",
+    phone: null,
+    website: null,
+    description: null,
+    adminFirstName: "Alex",
+    adminLastName: "Morgan",
+    adminEmail: "admin@acme.example",
+    password: VALID_PASSWORD,
+  });
+
+  assert.equal(persisted.password, undefined);
+  assert.equal(persisted.passwordHash, "secure-password-hash");
+  assert.equal(persisted.companyStatus, "Active");
+  assert.equal(persisted.adminStatus, "Active");
+  assert.equal(result.accessToken, "registration.jwt.token");
+  assert.equal(result.user.roleName, "Company Admin");
+  assert.equal(result.user.email, "contact@acme.example");
+  assert.equal(result.user.adminEmail, "admin@acme.example");
+});

@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
+import { Navigate, Route, Routes, useNavigate } from "react-router";
+import { AuthShell } from "./components/AuthShell";
 import { AuthToggle } from "./components/AuthToggle";
+import { CompanyRegistrationForm } from "./components/CompanyRegistrationForm";
 import { ForgotPasswordDialog } from "./components/ForgotPasswordDialog";
 import { LoginForm } from "./components/LoginForm";
-import { ProductShowcase } from "./components/ProductShowcase";
 import { loginCompany, loginIndividual } from "./services/auth";
 import type {
   LoginFormErrors,
@@ -58,7 +60,7 @@ function validateForm(values: LoginFormValues): LoginFormErrors {
 }
 
 function App() {
-  const [activeMode, setActiveMode] = useState<LoginMode>("individual");
+  const navigate = useNavigate();
   const [forms, setForms] = useState<Record<LoginMode, LoginFormValues>>(() => ({
     individual: createInitialValues("individual"),
     company: createInitialValues("company"),
@@ -80,7 +82,6 @@ function App() {
   });
   const [forgotMode, setForgotMode] = useState<LoginMode | null>(null);
 
-  const activeValues = forms[activeMode];
   const anyLoading = useMemo(
     () => loading.individual || loading.company,
     [loading],
@@ -163,21 +164,13 @@ function App() {
     }
   }
 
-  return (
-    <main className="auth-page">
-      <section className="auth-pane" aria-labelledby="brand-name">
-        <div className="auth-pane__glow" aria-hidden="true" />
-        <div className="auth-content">
-          <a className="brand" href="/" aria-label="SupportPilot home">
-            <span className="brand__mark" aria-hidden="true">✦</span>
-            <span id="brand-name">SupportPilot</span>
-          </a>
+  function renderLoginPage(activeMode: LoginMode) {
+    const activeValues = forms[activeMode];
 
-          <AuthToggle
-            activeMode={activeMode}
-            disabled={anyLoading}
-            onChange={setActiveMode}
-          />
+    return (
+      <>
+        <AuthShell>
+            <AuthToggle activeMode={activeMode} disabled={anyLoading} />
 
           <div className="form-stage" key={activeMode}>
             <LoginForm
@@ -222,19 +215,47 @@ function App() {
             By continuing, you agree to SupportPilot’s <a href="#terms">Terms of Service</a>{" "}
             and <a href="#privacy">Privacy Policy</a>.
           </p>
-        </div>
-      </section>
+        </AuthShell>
 
-      <ProductShowcase />
+        {forgotMode ? (
+          <ForgotPasswordDialog
+            mode={forgotMode}
+            initialEmail={forms[forgotMode].email}
+            onClose={closeForgotDialog}
+          />
+        ) : null}
+      </>
+    );
+  }
 
-      {forgotMode ? (
-        <ForgotPasswordDialog
-          mode={forgotMode}
-          initialEmail={forms[forgotMode].email}
-          onClose={closeForgotDialog}
-        />
-      ) : null}
-    </main>
+  return (
+    <Routes>
+      <Route path="/" element={renderLoginPage("individual")} />
+      <Route path="/company" element={renderLoginPage("company")} />
+      <Route
+        path="/company/register"
+        element={
+          <AuthShell registration>
+            <CompanyRegistrationForm
+              onAuthenticated={() =>
+                navigate("/company/dashboard", { replace: true })
+              }
+            />
+          </AuthShell>
+        }
+      />
+      <Route
+        path="/company/dashboard"
+        element={
+          <main className="dashboard-placeholder">
+            <span className="brand__mark" aria-hidden="true">✦</span>
+            <h1>Company dashboard</h1>
+            <p>Your company account is active and authenticated.</p>
+          </main>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 

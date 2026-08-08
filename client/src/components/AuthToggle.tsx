@@ -1,20 +1,34 @@
+import { NavLink } from "react-router";
 import type { LoginMode } from "../types/auth";
 
 interface AuthToggleProps {
   activeMode: LoginMode;
   disabled?: boolean;
-  onChange: (mode: LoginMode) => void;
 }
 
-const options: Array<{ label: string; mode: LoginMode; ariaLabel: string }> = [
-  { label: "Individual", mode: "individual", ariaLabel: "Individual Sign In" },
-  { label: "Company", mode: "company", ariaLabel: "Company Sign In" },
+const options: Array<{
+  label: string;
+  mode: LoginMode;
+  path: string;
+  ariaLabel: string;
+}> = [
+  {
+    label: "Individual",
+    mode: "individual",
+    path: "/",
+    ariaLabel: "Individual Sign In",
+  },
+  {
+    label: "Company",
+    mode: "company",
+    path: "/company",
+    ariaLabel: "Company Sign In",
+  },
 ];
 
 export function AuthToggle({
   activeMode,
   disabled = false,
-  onChange,
 }: AuthToggleProps) {
   return (
     <div className="auth-toggle" role="tablist" aria-label="Choose sign-in type">
@@ -23,21 +37,25 @@ export function AuthToggle({
         data-position={activeMode}
         aria-hidden="true"
       />
-      {options.map(({ label, mode, ariaLabel }) => (
-        <button
+      {options.map(({ label, mode, path, ariaLabel }) => (
+        <NavLink
           className="auth-toggle__option"
           data-active={activeMode === mode}
-          type="button"
+          to={path}
+          end
           role="tab"
           aria-label={ariaLabel}
           aria-selected={activeMode === mode}
+          aria-disabled={disabled}
           aria-controls={`${mode}-login-panel`}
-          disabled={disabled}
+          tabIndex={disabled ? -1 : undefined}
           key={mode}
-          onClick={() => onChange(mode)}
+          onClick={(event) => {
+            if (disabled) event.preventDefault();
+          }}
         >
           {label}
-        </button>
+        </NavLink>
       ))}
     </div>
   );

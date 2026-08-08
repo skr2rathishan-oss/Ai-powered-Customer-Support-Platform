@@ -49,6 +49,32 @@ Content-Type: application/json
 
 Allowed account types are exactly `individual` and `company`.
 
+### Automatic company registration
+
+```http
+POST /api/auth/company/register
+Content-Type: application/json
+
+{
+  "companyName": "Acme Support",
+  "industry": "SaaS",
+  "businessEmail": "contact@acme.example",
+  "phone": "+1 555 012 3456",
+  "website": "https://acme.example",
+  "description": "Customer support software",
+  "adminFirstName": "Alex",
+  "adminLastName": "Morgan",
+  "adminEmail": "admin@acme.example",
+  "password": "your-password"
+}
+```
+
+Business and administrator emails are separate identities. Registration creates
+an Active company, an Active user with the existing `Company Admin` role, and
+the `company_admins` relationship in one transaction. A successful response
+sets the same HTTP-only authentication cookie used by sign-in. Password
+confirmation is client-only and must not be included in the API payload.
+
 ### Current session
 
 ```http

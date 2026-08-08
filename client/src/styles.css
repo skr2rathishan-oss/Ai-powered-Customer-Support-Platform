@@ -38,20 +38,26 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
 button,
 a,
 input,
-label {
+label,
+select,
+textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
 button:focus-visible,
 a:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid rgba(109, 94, 245, 0.28);
   outline-offset: 2px;
 }
@@ -96,11 +102,41 @@ input:focus-visible {
   padding: 8px 0;
 }
 
+.auth-pane--registration {
+  height: 100vh;
+  min-height: 0;
+  align-items: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.auth-content--registration {
+  width: min(100%, 620px);
+  margin: 36px auto 32px;
+  padding: 0;
+}
+
+.auth-page--registration {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.auth-page--registration .product-showcase {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  min-height: 0;
+}
+
 .brand {
+  position: absolute;
+  z-index: 1;
+  top: 24px;
+  left: 24px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 32px;
   color: var(--primary);
   font-family: "Plus Jakarta Sans", "Inter", sans-serif;
   font-size: 24px;
@@ -162,7 +198,10 @@ input:focus-visible {
 .auth-toggle__option {
   position: relative;
   z-index: 1;
+  display: flex;
   flex: 1;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: 999px;
   color: var(--text-muted);
@@ -171,6 +210,7 @@ input:focus-visible {
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
+  text-decoration: none;
   transition: color 230ms ease;
 }
 
@@ -178,7 +218,7 @@ input:focus-visible {
   color: #fff;
 }
 
-.auth-toggle__option:disabled {
+.auth-toggle__option[aria-disabled="true"] {
   cursor: wait;
 }
 
@@ -459,6 +499,123 @@ input:focus-visible {
 .submit-button:disabled {
   cursor: wait;
   opacity: 0.72;
+}
+
+.company-register-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.company-register-prompt a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.company-register-prompt a:hover {
+  text-decoration: underline;
+}
+
+.registration-form {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.registration-header h1,
+.dashboard-placeholder h1 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 36px;
+  letter-spacing: -0.02em;
+}
+
+.registration-header p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.registration-form fieldset {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.registration-form legend {
+  width: 100%;
+  padding: 0 0 12px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid rgba(200, 196, 215, 0.55);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.registration-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 16px;
+}
+
+.registration-grid__full {
+  grid-column: 1 / -1;
+}
+
+.optional-label {
+  color: #8a8698;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.registration-textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+
+.registration-signin-link {
+  margin: -8px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+}
+
+.registration-signin-link a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.registration-signin-link a:hover {
+  text-decoration: underline;
+}
+
+.dashboard-placeholder {
+  display: grid;
+  min-height: 100vh;
+  padding: 32px;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.dashboard-placeholder p {
+  margin: 0;
+  color: var(--text-muted);
 }
 
 .spinner {
@@ -803,8 +960,13 @@ input:focus-visible {
     align-items: flex-start;
   }
 
-  .brand {
-    margin-bottom: 24px;
+  .auth-content {
+    padding-top: 64px;
+  }
+
+  .auth-content--registration {
+    margin-top: 36px;
+    padding-top: 0;
   }
 
   .auth-toggle {
@@ -837,10 +999,21 @@ input:focus-visible {
     overflow: visible;
   }
 
+  .auth-page--registration {
+    height: 100svh;
+    overflow: hidden;
+  }
+
   .auth-pane {
     width: 100%;
     min-height: 100svh;
     padding: 40px 24px;
+  }
+
+  .auth-page--registration .auth-pane--registration {
+    height: 100svh;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .product-showcase {
@@ -859,8 +1032,13 @@ input:focus-visible {
   }
 
   .brand {
-    margin-bottom: 28px;
+    top: 20px;
+    left: 20px;
     font-size: 22px;
+  }
+
+  .auth-content {
+    padding-top: 64px;
   }
 
   .auth-toggle {
@@ -873,6 +1051,19 @@ input:focus-visible {
 
   .form-stage {
     min-height: 309px;
+  }
+
+  .auth-content--registration {
+    margin: 36px auto 24px;
+    padding-top: 0;
+  }
+
+  .registration-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .registration-grid__full {
+    grid-column: auto;
   }
 
   .forgot-dialog {

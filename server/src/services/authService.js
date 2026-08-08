@@ -12,6 +12,13 @@ function createAuthService(dependencies = {}) {
   const users = dependencies.userModel || userModel;
   const companies = dependencies.companyModel || companyModel;
   const createToken = dependencies.createAccessToken || createAccessToken;
+  const hashPassword =
+    dependencies.hashPassword ||
+    ((password) => bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS || 12)));
+  const initialCompanyStatus =
+    dependencies.initialCompanyStatus ||
+    process.env.COMPANY_REGISTRATION_STATUS ||
+    "Active";
 
   async function signIn({ accountType, email, password }) {
     let account;
@@ -76,7 +83,34 @@ function createAuthService(dependencies = {}) {
     };
   }
 
-  return { signIn };
+  async function registerCompany(registration) {
+    const passwordHash = await hashPassword(registration.password);
+    const account = await companies.createRegistration({
+      ...registration,
+      password: undefined,
+      passwordHash,
+      companyStatus: initialCompanyStatus,
+      adminStatus: "Active",
+    });
+
+    const safeUser = {
+      accountType: "company",
+      userId: account.userId,
+      companyId: account.companyId,
+      companyName: account.companyName,
+      email: account.businessEmail,
+      adminEmail: account.adminEmail,
+      onlineStatus: account.onlineStatus,
+      roleName: account.roleName,
+    };
+
+    return {
+      user: safeUser,
+      accessToken: createToken(safeUser),
+    };
+  }
+
+  return { signIn, registerCompany };
 }
 
 module.exports = { createAuthService };
