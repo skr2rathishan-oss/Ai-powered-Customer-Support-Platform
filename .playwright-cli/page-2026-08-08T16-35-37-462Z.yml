@@ -1,0 +1,82 @@
+- main [ref=e3]:
+  - region "SupportPilot" [ref=e4]:
+    - link "SupportPilot home" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e6]: ✦
+      - generic [ref=e7]: SupportPilot
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - heading "Register Your Company" [level=1] [ref=e11]
+        - paragraph [ref=e12]: Create your workspace and administrator account.
+      - group "Company information" [ref=e13]:
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: Company Name
+            - textbox "Company Name" [ref=e18]:
+              - /placeholder: Acme Inc.
+          - generic [ref=e19]:
+            - generic [ref=e20]: Industry
+            - combobox "Industry" [ref=e21]:
+              - option "Select an industry" [selected]
+              - option "SaaS"
+              - option "E-commerce"
+              - option "Fintech"
+              - option "Healthcare"
+              - option "Education"
+              - option "Other"
+          - generic [ref=e22]:
+            - generic [ref=e23]: Business Email
+            - textbox "Business Email" [ref=e24]:
+              - /placeholder: contact@company.com
+          - generic [ref=e25]:
+            - generic [ref=e26]: Phone Optional
+            - textbox "Phone Optional" [ref=e27]:
+              - /placeholder: +1 555 012 3456
+          - generic [ref=e29]:
+            - generic [ref=e30]: Website Optional
+            - textbox "Website Optional" [ref=e31]:
+              - /placeholder: https://company.com
+          - generic [ref=e33]:
+            - generic [ref=e34]: Description Optional
+            - textbox "Description Optional" [ref=e35]:
+              - /placeholder: Tell us briefly about your company.
+      - group "Administrator account" [ref=e36]:
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: First Name
+            - textbox "First Name" [ref=e41]:
+              - /placeholder: Alex
+          - generic [ref=e42]:
+            - generic [ref=e43]: Last Name
+            - textbox "Last Name" [ref=e44]:
+              - /placeholder: Morgan
+          - generic [ref=e46]:
+            - generic [ref=e47]: Administrator Email
+            - textbox "Administrator Email" [ref=e48]:
+              - /placeholder: admin@company.com
+          - generic [ref=e49]:
+            - generic [ref=e50]: Password
+            - generic [ref=e51]:
+              - textbox "Password" [ref=e52]:
+                - /placeholder: ••••••••
+              - button "Show password" [ref=e53] [cursor=pointer]
+          - generic [ref=e57]:
+            - generic [ref=e58]: Confirm Password
+            - generic [ref=e59]:
+              - textbox "Confirm Password" [ref=e60]:
+                - /placeholder: ••••••••
+              - button "Show password" [ref=e61] [cursor=pointer]
+      - button "Register Company" [ref=e65] [cursor=pointer]
+      - paragraph [ref=e66]:
+        - text: Already registered?
+        - link "Back to Company Sign In" [ref=e67] [cursor=pointer]:
+          - /url: /company
+  - complementary "SupportPilot product preview" [ref=e68]:
+    - article [ref=e71]:
+      - generic [ref=e72]:
+        - generic [ref=e73]: ✦
+        - heading "SupportPilot AI" [level=2] [ref=e74]
+      - paragraph [ref=e75]: Join 2,000+ enterprises optimizing their customer support workflow with our intelligent pilot assistant. From ticketing management to real-time agent workspace, we’ve got you covered.
+      - generic [ref=e78]:
+        - strong [ref=e79]: Trusted by world-class teams
+        - generic "Five out of five stars" [ref=e80]: ★ ★ ★ ★ ★

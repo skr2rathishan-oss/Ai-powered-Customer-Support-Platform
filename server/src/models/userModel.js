@@ -11,7 +11,9 @@ async function findByEmail(email) {
        r.role_name AS roleName
      FROM users AS u
      INNER JOIN roles AS r ON r.role_id = u.role_id
-     WHERE u.email = ?
+     LEFT JOIN company_admins AS ca ON ca.admin_id = u.user_id
+     WHERE LOWER(u.email) = ?
+       AND ca.admin_id IS NULL
      LIMIT 1`,
     [email],
   );
@@ -20,4 +22,3 @@ async function findByEmail(email) {
 }
 
 module.exports = { findByEmail };
-

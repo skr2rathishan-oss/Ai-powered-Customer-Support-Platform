@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import type {
   LoginFormErrors,
   LoginFormValues,
@@ -142,6 +143,13 @@ export function LoginForm({
           "Sign In"
         )}
       </button>
+
+      {isCompany ? (
+        <div className="company-register-prompt">
+          <span>New to SupportPilot?</span>
+          <Link to="/company/register">Register now</Link>
+        </div>
+      ) : null}
     </form>
   );
 }

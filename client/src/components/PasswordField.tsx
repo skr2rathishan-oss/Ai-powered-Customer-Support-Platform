@@ -1,9 +1,11 @@
 interface PasswordFieldProps {
   id: string;
+  label?: string;
   value: string;
   visible: boolean;
   disabled?: boolean;
   error?: string;
+  autoComplete?: string;
   onBlur: () => void;
   onChange: (value: string) => void;
   onToggleVisibility: () => void;
@@ -24,10 +26,12 @@ function EyeIcon({ hidden }: { hidden: boolean }) {
 
 export function PasswordField({
   id,
+  label = "Password",
   value,
   visible,
   disabled = false,
   error,
+  autoComplete = "current-password",
   onBlur,
   onChange,
   onToggleVisibility,
@@ -37,7 +41,7 @@ export function PasswordField({
   return (
     <div className="field-group">
       <div className="password-label-row">
-        <label htmlFor={id}>Password</label>
+        <label htmlFor={id}>{label}</label>
       </div>
       <div className="password-field">
         <input
@@ -46,7 +50,7 @@ export function PasswordField({
           type={visible ? "text" : "password"}
           value={value}
           placeholder="••••••••"
-          autoComplete="current-password"
+          autoComplete={autoComplete}
           disabled={disabled}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}

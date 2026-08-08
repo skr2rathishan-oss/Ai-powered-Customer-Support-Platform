@@ -3,10 +3,18 @@ const { getAuthConfig } = require("../config/auth");
 
 function createAccessToken(user) {
   const config = getAuthConfig();
+  const subjectId =
+    user.accountType === "company" ? user.companyId : user.userId;
 
   return jwt.sign(
     {
-      sub: String(user.userId),
+      sub: `${user.accountType}:${subjectId}`,
+      accountType: user.accountType,
+      userId: String(user.userId),
+      ...(user.companyId !== undefined && {
+        companyId: String(user.companyId),
+      }),
+      ...(user.companyName && { companyName: user.companyName }),
       email: user.email,
       roleName: user.roleName,
     },
@@ -22,11 +30,22 @@ function createAccessToken(user) {
 function verifyAccessToken(token) {
   const config = getAuthConfig();
 
-  return jwt.verify(token, config.jwtSecret, {
+  const payload = jwt.verify(token, config.jwtSecret, {
     issuer: "supportpilot-api",
     audience: "supportpilot-client",
   });
+
+  if (
+    !payload ||
+    typeof payload === "string" ||
+    !["individual", "company"].includes(payload.accountType) ||
+    !payload.userId ||
+    (payload.accountType === "company" && !payload.companyId)
+  ) {
+    throw new jwt.JsonWebTokenError("Invalid account session");
+  }
+
+  return payload;
 }
 
 module.exports = { createAccessToken, verifyAccessToken };
-
