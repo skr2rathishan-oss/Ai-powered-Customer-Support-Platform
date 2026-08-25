@@ -1,5 +1,6 @@
 import { NavLink } from "react-router";
-import type { LoginMode } from "../types/auth";
+import type { LoginMode } from "../../types/auth";
+import { ROUTES } from "../../router/routes";
 
 interface AuthToggleProps {
   activeMode: LoginMode;
@@ -15,13 +16,13 @@ const options: Array<{
   {
     label: "Individual",
     mode: "individual",
-    path: "/",
+    path: ROUTES.LOGIN,
     ariaLabel: "Individual Sign In",
   },
   {
     label: "Company",
     mode: "company",
-    path: "/company",
+    path: ROUTES.LOGIN_COMPANY,
     ariaLabel: "Company Sign In",
   },
 ];
@@ -60,3 +61,4 @@ export function AuthToggle({
     </div>
   );
 }
+

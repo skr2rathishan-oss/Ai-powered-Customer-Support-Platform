@@ -1,36 +1,23 @@
 interface PasswordFieldProps {
   id: string;
-  label?: string;
   value: string;
   visible: boolean;
   disabled?: boolean;
   error?: string;
+  label?: string;
   autoComplete?: string;
   onBlur: () => void;
   onChange: (value: string) => void;
   onToggleVisibility: () => void;
 }
 
-function EyeIcon({ hidden }: { hidden: boolean }) {
-  return hidden ? (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 3l18 18M10.6 10.7a2 2 0 002.7 2.7M9.9 4.2A10.8 10.8 0 0112 4c5.5 0 9 5.7 9 5.7a15 15 0 01-2.2 2.8M6.6 6.7A16 16 0 003 9.7s3.5 5.7 9 5.7c1 0 2-.2 2.9-.6" />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 12s3.5-5.7 9-5.7 9 5.7 9 5.7-3.5 5.7-9 5.7S3 12 3 12z" />
-      <circle cx="12" cy="12" r="2.5" />
-    </svg>
-  );
-}
-
 export function PasswordField({
   id,
-  label = "Password",
   value,
   visible,
   disabled = false,
   error,
+  label = "Password",
   autoComplete = "current-password",
   onBlur,
   onChange,
@@ -40,17 +27,17 @@ export function PasswordField({
 
   return (
     <div className="field-group">
-      <div className="password-label-row">
+      <div className="field-group__header">
         <label htmlFor={id}>{label}</label>
       </div>
-      <div className="password-field">
+      <div className="password-input-wrap">
         <input
           id={id}
           className={error ? "input input--error" : "input"}
           type={visible ? "text" : "password"}
-          value={value}
-          placeholder="••••••••"
           autoComplete={autoComplete}
+          placeholder="••••••••"
+          value={value}
           disabled={disabled}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}
@@ -58,14 +45,24 @@ export function PasswordField({
           onChange={(event) => onChange(event.target.value)}
         />
         <button
-          className="password-field__toggle"
+          className="password-toggle-btn"
           type="button"
-          disabled={disabled}
+          tabIndex={-1}
           aria-label={visible ? "Hide password" : "Show password"}
-          aria-pressed={visible}
+          disabled={disabled}
           onClick={onToggleVisibility}
         >
-          <EyeIcon hidden={visible} />
+          {visible ? (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          )}
         </button>
       </div>
       {error ? (
@@ -76,3 +73,4 @@ export function PasswordField({
     </div>
   );
 }
+

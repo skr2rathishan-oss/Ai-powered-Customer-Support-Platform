@@ -1,4 +1,5 @@
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
+const { createAccessToken } = require("../utils/token");
 
 function createAuthController(authService) {
   async function signIn(request, response) {
@@ -60,7 +61,35 @@ function createAuthController(authService) {
     });
   }
 
-  return { signIn, registerCompany, signOut, me };
+  function googleCallback(request, response) {
+    const rawUser = request.user;
+    if (!rawUser) {
+      const clientOrigin =
+        process.env.CLIENT_ORIGIN || "http://localhost:5173";
+      return response.redirect(`${clientOrigin}/login?error=google_auth_failed`);
+    }
+
+    const safeUser = {
+      accountType: "individual",
+      userId: rawUser.userId || rawUser.id,
+      email: rawUser.email,
+      onlineStatus: rawUser.onlineStatus || "Offline",
+      roleName: rawUser.roleName || "Agent",
+    };
+
+    const accessToken = authService.generateToken
+      ? authService.generateToken(safeUser)
+      : createAccessToken(safeUser);
+
+    setAuthCookie(response, accessToken);
+    response.set("Cache-Control", "no-store");
+
+    const clientOrigin =
+      process.env.CLIENT_ORIGIN || "http://localhost:5173";
+    return response.redirect(`${clientOrigin}/login?authenticated=true`);
+  }
+
+  return { signIn, registerCompany, signOut, me, googleCallback };
 }
 
 module.exports = { createAuthController };

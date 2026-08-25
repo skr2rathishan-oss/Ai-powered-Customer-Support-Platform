@@ -7,14 +7,28 @@ const AVATARS = [
 export function ProductShowcase() {
   return (
     <aside className="product-showcase" aria-label="SupportPilot product preview">
-      <div className="product-showcase__image" aria-hidden="true" />
+      <div className="product-showcase__image" aria-hidden="true">
+        <img
+          src="/supportpilot-showcase.png"
+          alt=""
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src =
+              "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80";
+          }}
+        />
+      </div>
       <div className="product-showcase__shade" aria-hidden="true" />
       <div className="ambient-orb ambient-orb--top" aria-hidden="true" />
       <div className="ambient-orb ambient-orb--bottom" aria-hidden="true" />
 
       <article className="testimonial-card">
         <header className="testimonial-card__header">
-          <span className="sparkle-icon" aria-hidden="true">✦</span>
+          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center shadow-xs">
+            <span className="material-symbols-outlined text-white text-sm">
+              flight_takeoff
+            </span>
+          </div>
           <h2>SupportPilot AI</h2>
         </header>
         <p>

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { ProductShowcase } from "./ProductShowcase";
+import { ROUTES } from "../../router/routes";
 
 interface AuthShellProps {
   children: ReactNode;
@@ -20,9 +21,15 @@ export function AuthShell({
         aria-labelledby="brand-name"
       >
         <div className="auth-pane__glow" aria-hidden="true" />
-        <Link className="brand" to="/" aria-label="SupportPilot home">
-          <span className="brand__mark" aria-hidden="true">✦</span>
-          <span id="brand-name">SupportPilot</span>
+        <Link className="brand" to={ROUTES.HOME} aria-label="Back to SupportPilot home">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-md shadow-primary/20">
+            <span className="material-symbols-outlined text-white text-lg">
+              flight_takeoff
+            </span>
+          </div>
+          <span id="brand-name" className="font-bold text-xl tracking-tight text-on-surface">
+            SupportPilot
+          </span>
         </Link>
         <div
           className={

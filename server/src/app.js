@@ -3,13 +3,15 @@ const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const { configurePassport } = require("./config/passport");
 const { createAuthRouter } = require("./routes/authRoutes");
 const { createAuthService } = require("./services/authService");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 
 function createApp(dependencies = {}) {
   const app = express();
-  const authService = dependencies.authService || createAuthService();
+  const authService = dependencies.authService || createAuthService(dependencies);
+  const passport = dependencies.passport || configurePassport(dependencies);
 
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
@@ -22,6 +24,7 @@ function createApp(dependencies = {}) {
   );
   app.use(express.json({ limit: "10kb" }));
   app.use(cookieParser());
+  app.use(passport.initialize());
 
   if (process.env.NODE_ENV !== "test") app.use(morgan("dev"));
 
@@ -29,7 +32,7 @@ function createApp(dependencies = {}) {
     response.status(200).json({ status: "ok" });
   });
 
-  app.use("/api/auth", createAuthRouter(authService));
+  app.use("/api/auth", createAuthRouter(authService, { passport }));
   app.use(notFoundHandler);
   app.use(errorHandler);
 

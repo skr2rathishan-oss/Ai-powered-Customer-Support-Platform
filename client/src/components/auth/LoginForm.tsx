@@ -3,8 +3,9 @@ import type {
   LoginFormErrors,
   LoginFormValues,
   LoginMode,
-} from "../types/auth";
+} from "../../types/auth";
 import { PasswordField } from "./PasswordField";
+import { ROUTES } from "../../router/routes";
 
 interface LoginFormProps {
   mode: LoginMode;
@@ -147,9 +148,10 @@ export function LoginForm({
       {isCompany ? (
         <div className="company-register-prompt">
           <span>New to SupportPilot?</span>
-          <Link to="/company/register">Register now</Link>
+          <Link to={ROUTES.REGISTER_COMPANY}>Register now</Link>
         </div>
       ) : null}
     </form>
   );
 }
+
