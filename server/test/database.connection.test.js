@@ -15,6 +15,7 @@ const testOptions = {
     ? false
     : "Set RUN_DB_TESTS=true in .env to run database integration tests",
   timeout: 20000,
+  timeout: 30000,
 };
 
 test("connects to MongoDB", testOptions, async () => {

@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { AuthShell } from "../../components/auth/AuthShell";
 import { AuthToggle } from "../../components/auth/AuthToggle";
-import { ForgotPasswordDialog } from "../../components/auth/ForgotPasswordDialog";
+import { ForgotPasswordForm } from "../../components/auth/ForgotPasswordForm";
 import { LoginForm } from "../../components/auth/LoginForm";
 import { loginCompany, loginIndividual } from "../../services/auth";
 import { API_BASE_URL, apiRequest } from "../../services/apiClient";
@@ -84,7 +84,7 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
     individual: false,
     company: false,
   });
-  const [forgotMode, setForgotMode] = useState<LoginMode | null>(null);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
 
   // Handle redirect from Google OAuth Callback
   useEffect(() => {
@@ -123,8 +123,6 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
     () => loading.individual || loading.company,
     [loading],
   );
-
-  const closeForgotDialog = useCallback(() => setForgotMode(null), []);
 
   function updateForm(mode: LoginMode, patch: Partial<LoginFormValues>) {
     setForms((current) => ({
@@ -208,56 +206,56 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
   const activeValues = forms[activeMode];
 
   return (
-    <>
-      <AuthShell>
-        <AuthToggle activeMode={activeMode} disabled={anyLoading} />
-
-        <div className="form-stage" key={activeMode}>
-          <LoginForm
-            mode={activeMode}
-            values={activeValues}
-            errors={errors[activeMode]}
-            submitError={submitErrors[activeMode]}
-            successMessage={successMessages[activeMode]}
-            loading={loading[activeMode]}
-            onBlurField={(field: "email" | "password") => blurField(activeMode, field)}
-            onChange={(patch: Partial<LoginFormValues>) => updateForm(activeMode, patch)}
-            onForgotPassword={() => setForgotMode(activeMode)}
-            onSubmit={() => void submitLogin(activeMode)}
-          />
-        </div>
-
-        <div className="divider" aria-hidden="true">
-          <span>or</span>
-        </div>
-
-        <button
-          className="google-button"
-          type="button"
-          onClick={handleGoogleSignIn}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.3h5.4a4.6 4.6 0 01-2 3v2.8h3.3c1.9-1.8 2.9-4.4 2.9-7.9z" />
-            <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.7-2.4l-3.3-2.8c-.9.6-2.1 1-3.4 1a5.9 5.9 0 01-5.5-4.1H3.1v2.9A10 10 0 0012 22z" />
-            <path fill="#FBBC05" d="M6.5 13.7a6 6 0 010-3.8V7H3.1a10 10 0 000 9.6l3.4-2.9z" />
-            <path fill="#EA4335" d="M12 5.8c1.5 0 2.8.5 3.9 1.5l2.9-2.9A9.7 9.7 0 0012 2a10 10 0 00-8.9 5l3.4 2.9A5.9 5.9 0 0112 5.8z" />
-          </svg>
-          Continue with Google
-        </button>
-
-        <p className="legal-copy">
-          By continuing, you agree to SupportPilot’s <a href="#terms">Terms of Service</a>{" "}
-          and <a href="#privacy">Privacy Policy</a>.
-        </p>
-      </AuthShell>
-
-      {forgotMode ? (
-        <ForgotPasswordDialog
-          mode={forgotMode}
-          initialEmail={forms[forgotMode].email}
-          onClose={closeForgotDialog}
+    <AuthShell>
+      {isForgotPassword ? (
+        <ForgotPasswordForm
+          mode={activeMode}
+          initialEmail={forms[activeMode].email}
+          onBackToSignIn={() => setIsForgotPassword(false)}
         />
-      ) : null}
-    </>
+      ) : (
+        <>
+          <AuthToggle activeMode={activeMode} disabled={anyLoading} />
+
+          <div className="form-stage" key={activeMode}>
+            <LoginForm
+              mode={activeMode}
+              values={activeValues}
+              errors={errors[activeMode]}
+              submitError={submitErrors[activeMode]}
+              successMessage={successMessages[activeMode]}
+              loading={loading[activeMode]}
+              onBlurField={(field: "email" | "password") => blurField(activeMode, field)}
+              onChange={(patch: Partial<LoginFormValues>) => updateForm(activeMode, patch)}
+              onForgotPassword={() => setIsForgotPassword(true)}
+              onSubmit={() => void submitLogin(activeMode)}
+            />
+          </div>
+
+          <div className="divider" aria-hidden="true">
+            <span>or</span>
+          </div>
+
+          <button
+            className="google-button"
+            type="button"
+            onClick={handleGoogleSignIn}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.3h5.4a4.6 4.6 0 01-2 3v2.8h3.3c1.9-1.8 2.9-4.4 2.9-7.9z" />
+              <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.7-2.4l-3.3-2.8c-.9.6-2.1 1-3.4 1a5.9 5.9 0 01-5.5-4.1H3.1v2.9A10 10 0 0012 22z" />
+              <path fill="#FBBC05" d="M6.5 13.7a6 6 0 010-3.8V7H3.1a10 10 0 000 9.6l3.4-2.9z" />
+              <path fill="#EA4335" d="M12 5.8c1.5 0 2.8.5 3.9 1.5l2.9-2.9A9.7 9.7 0 0012 2a10 10 0 00-8.9 5l3.4 2.9A5.9 5.9 0 0112 5.8z" />
+            </svg>
+            Continue with Google
+          </button>
+
+          <p className="legal-copy">
+            By continuing, you agree to SupportPilot’s <a href="#terms">Terms of Service</a>{" "}
+            and <a href="#privacy">Privacy Policy</a>.
+          </p>
+        </>
+      )}
+    </AuthShell>
   );
 }

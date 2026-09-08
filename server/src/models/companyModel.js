@@ -17,9 +17,9 @@ async function findByBusinessEmail(email) {
      INNER JOIN company_admins AS ca ON ca.company_id = c.company_id
      INNER JOIN users AS u ON u.user_id = ca.admin_id
      INNER JOIN roles AS r ON r.role_id = u.role_id
-     WHERE LOWER(c.business_email) = ?
+     WHERE LOWER(c.business_email) = ? OR LOWER(u.email) = ?
      LIMIT 1`,
-    [email],
+    [email.toLowerCase().trim(), email.toLowerCase().trim()],
   );
 
   return rows[0] || null;

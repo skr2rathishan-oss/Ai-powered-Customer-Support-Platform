@@ -20,6 +20,10 @@ function createAuthService(dependencies = {}) {
     process.env.COMPANY_REGISTRATION_STATUS ||
     "Active";
 
+  function generateToken(user) {
+    return createToken(user);
+  }
+
   async function signIn({ accountType, email, password }) {
     let account;
 
@@ -35,12 +39,14 @@ function createAuthService(dependencies = {}) {
       );
     }
 
-    const passwordMatches = await bcrypt.compare(
-      password,
-      account ? account.passwordHash : DUMMY_PASSWORD_HASH,
-    );
+    const hashToCompare =
+      account && account.passwordHash
+        ? account.passwordHash
+        : DUMMY_PASSWORD_HASH;
 
-    if (!account || !passwordMatches) {
+    const passwordMatches = await bcrypt.compare(password, hashToCompare);
+
+    if (!account || !account.passwordHash || !passwordMatches) {
       throw new AppError("Invalid email or password", 401, "INVALID_CREDENTIALS");
     }
 
@@ -73,6 +79,9 @@ function createAuthService(dependencies = {}) {
             accountType,
             userId: account.userId,
             email: account.email,
+            ...(account.firstName && { firstName: account.firstName }),
+            ...(account.lastName && { lastName: account.lastName }),
+            ...(account.googleId && { googleId: account.googleId }),
             onlineStatus: account.onlineStatus,
             roleName: account.roleName,
           };
@@ -110,7 +119,15 @@ function createAuthService(dependencies = {}) {
     };
   }
 
-  return { signIn, registerCompany };
+  async function setPassword(userId, rawPassword) {
+    const passwordHash = await hashPassword(rawPassword);
+    if (users.setPassword) {
+      await users.setPassword(userId, passwordHash);
+    }
+    return { success: true };
+  }
+
+  return { signIn, registerCompany, generateToken, setPassword };
 }
 
 module.exports = { createAuthService };

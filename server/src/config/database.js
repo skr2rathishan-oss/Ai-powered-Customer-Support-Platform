@@ -1,6 +1,14 @@
 const fs = require("node:fs");
+const dns = require("node:dns");
 const mongoose = require("mongoose");
 const mysql = require("mysql2/promise");
+
+// Configure public DNS servers fallback for MongoDB Atlas SRV resolution
+try {
+  dns.setServers(["8.8.8.8", "1.1.1.1"]);
+} catch {
+  // Ignore if custom DNS is restricted in runtime
+}
 
 let mysqlPool;
 
@@ -19,6 +27,8 @@ async function connectMongoDB() {
 
   await mongoose.connect(uri, {
     serverSelectionTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 15000,
+    family: 4,
   });
 
   return mongoose.connection;
@@ -50,9 +60,31 @@ function getMySQLPool() {
   return mysqlPool;
 }
 
+async function initMySQLSchema() {
+  const pool = getMySQLPool();
+  try {
+    const [columns] = await pool.query(
+      "SHOW COLUMNS FROM users LIKE 'google_id'",
+    );
+    if (columns.length === 0) {
+      await pool.query(
+        "ALTER TABLE users ADD COLUMN google_id VARCHAR(255) NULL UNIQUE AFTER email",
+      );
+      if (process.env.NODE_ENV !== "test") {
+        console.log("Successfully ensured google_id column exists in users table");
+      }
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Schema initialization notice:", error.message);
+    }
+  }
+}
+
 async function connectMySQL() {
   const pool = getMySQLPool();
   await pool.query("SELECT 1");
+  await initMySQLSchema();
   return pool;
 }
 
@@ -70,6 +102,7 @@ async function closeDatabaseConnections() {
 module.exports = {
   connectMongoDB,
   connectMySQL,
+  initMySQLSchema,
   closeDatabaseConnections,
   getMySQLPool,
 };
