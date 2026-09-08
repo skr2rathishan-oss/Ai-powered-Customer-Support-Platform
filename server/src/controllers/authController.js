@@ -47,6 +47,9 @@ function createAuthController(authService) {
       userId: request.auth.userId,
       email: request.auth.email,
       roleName: request.auth.roleName,
+      ...(request.auth.firstName && { firstName: request.auth.firstName }),
+      ...(request.auth.lastName && { lastName: request.auth.lastName }),
+      ...(request.auth.googleId && { googleId: request.auth.googleId }),
       ...(request.auth.companyId && {
         companyId: request.auth.companyId,
         companyName: request.auth.companyName,
@@ -73,6 +76,9 @@ function createAuthController(authService) {
       accountType: "individual",
       userId: rawUser.userId || rawUser.id,
       email: rawUser.email,
+      ...(rawUser.firstName && { firstName: rawUser.firstName }),
+      ...(rawUser.lastName && { lastName: rawUser.lastName }),
+      ...(rawUser.googleId && { googleId: rawUser.googleId }),
       onlineStatus: rawUser.onlineStatus || "Offline",
       roleName: rawUser.roleName || "Agent",
     };

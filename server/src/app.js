@@ -33,6 +33,9 @@ function createApp(dependencies = {}) {
   });
 
   app.use("/api/auth", createAuthRouter(authService, { passport }));
+  const authRouter = createAuthRouter(authService, { passport });
+  app.use("/api/auth", authRouter);
+  app.use("/auth", authRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);
 
