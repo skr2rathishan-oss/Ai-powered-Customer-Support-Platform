@@ -6,7 +6,9 @@ import type {
   LoginResult,
 } from "../types/auth";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "");
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000"
+).replace(/\/$/, "");
 
 interface SignInResponse {
   success: boolean;
@@ -160,9 +162,102 @@ export function loginCompany(
   return signIn("company", credentials);
 }
 
-export async function requestPasswordReset(email: string): Promise<void> {
-  // TODO(API): Replace this placeholder with POST /api/auth/forgot-password
-  // when the backend exposes a password-recovery endpoint.
-  void email;
-  await new Promise((resolve) => window.setTimeout(resolve, 850));
+export async function requestPasswordReset(email: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+  } catch {
+    throw new AuthenticationError(
+      "We couldn’t reach SupportPilot. Check your connection and try again.",
+      0,
+    );
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | { success?: boolean; message?: string; resetToken?: string }
+    | ApiErrorResponse
+    | null;
+
+  if (!response.ok) {
+    const apiError = payload as ApiErrorResponse | null;
+    throw new AuthenticationError(
+      apiError?.message ?? "Unable to send password reset link. Please try again.",
+      response.status,
+    );
+  }
+
+  return (payload as { message?: string })?.message ?? "Password reset link sent.";
 }
+
+export async function verifyResetToken(
+  token: string,
+): Promise<{ valid: boolean; email: string }> {
+  let response: Response;
+  try {
+    response = await fetch(
+      `${API_BASE_URL}/api/auth/verify-reset-token?token=${encodeURIComponent(token.trim())}`,
+    );
+  } catch {
+    throw new AuthenticationError(
+      "We couldn’t reach SupportPilot. Check your connection and try again.",
+      0,
+    );
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | { success: boolean; data: { valid: boolean; email: string } }
+    | ApiErrorResponse
+    | null;
+
+  if (!response.ok) {
+    const apiError = payload as ApiErrorResponse | null;
+    throw new AuthenticationError(
+      apiError?.message ?? "This password reset link is invalid or has expired.",
+      response.status,
+    );
+  }
+
+  return (payload as { success: boolean; data: { valid: boolean; email: string } }).data;
+}
+
+export async function resetPassword(
+  token: string,
+  password: string,
+): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: token.trim(),
+        password,
+      }),
+    });
+  } catch {
+    throw new AuthenticationError(
+      "We couldn’t reach SupportPilot. Check your connection and try again.",
+      0,
+    );
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | { success?: boolean; message?: string }
+    | ApiErrorResponse
+    | null;
+
+  if (!response.ok) {
+    const apiError = payload as ApiErrorResponse | null;
+    throw new AuthenticationError(
+      apiError?.message ?? "Failed to reset password. Please try again.",
+      response.status,
+    );
+  }
+
+  return (payload as { message?: string })?.message ?? "Password reset successfully.";
+}
+

@@ -5,6 +5,8 @@ const { authenticate } = require("../middleware/authenticate");
 const {
   validateSignInRequest,
   validateCompanyRegistrationRequest,
+  validateForgotPasswordRequest,
+  validateResetPasswordRequest,
 } = require("../middleware/validateRequest");
 const asyncHandler = require("../utils/asyncHandler");
 const defaultPassport = require("passport");
@@ -19,11 +21,37 @@ function createAuthRouter(authService, dependencies = {}) {
     limit: 10,
     standardHeaders: "draft-8",
     legacyHeaders: false,
-    skip: () => process.env.NODE_ENV === "test",
+    skip: () => process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" || process.env.DISABLE_RATE_LIMIT === "true",
     message: {
       success: false,
       message: "Too many registration attempts. Please try again later.",
       code: "REGISTRATION_RATE_LIMITED",
+    },
+  });
+
+  const forgotPasswordLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" || process.env.DISABLE_RATE_LIMIT === "true",
+    message: {
+      success: false,
+      message: "Too many password reset requests. Please try again later.",
+      code: "FORGOT_PASSWORD_RATE_LIMITED",
+    },
+  });
+
+  const resetPasswordLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" || process.env.DISABLE_RATE_LIMIT === "true",
+    message: {
+      success: false,
+      message: "Too many password reset attempts. Please try again later.",
+      code: "RESET_PASSWORD_RATE_LIMITED",
     },
   });
 
@@ -40,6 +68,28 @@ function createAuthRouter(authService, dependencies = {}) {
   );
   router.post("/sign-out", controller.signOut);
   router.get("/me", authenticate, controller.me);
+
+  // Password Reset endpoints
+  router.post(
+    "/forgot-password",
+    forgotPasswordLimiter,
+    validateForgotPasswordRequest,
+    asyncHandler(controller.forgotPassword),
+  );
+  router.get(
+    "/verify-reset-token",
+    asyncHandler(controller.verifyResetToken),
+  );
+  router.get(
+    "/validate-reset-token",
+    asyncHandler(controller.verifyResetToken),
+  );
+  router.post(
+    "/reset-password",
+    resetPasswordLimiter,
+    validateResetPasswordRequest,
+    asyncHandler(controller.resetPassword),
+  );
 
   // Google OAuth 2.0 endpoints
   router.get(

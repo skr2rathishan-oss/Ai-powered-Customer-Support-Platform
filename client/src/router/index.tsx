@@ -4,6 +4,7 @@ import { LandingPage } from "../pages/landing/LandingPage";
 import { AuthPage } from "../pages/auth/AuthPage";
 import { CompanyRegisterPage } from "../pages/auth/CompanyRegisterPage";
 import { DashboardPlaceholderPage } from "../pages/auth/DashboardPlaceholderPage";
+import { ResetPasswordPage } from "../pages/auth/ResetPasswordPage";
 
 export function AppRouter() {
   return (
@@ -21,6 +22,12 @@ export function AppRouter() {
       <Route
         path={ROUTES.COMPANY_LEGACY}
         element={<Navigate to={ROUTES.LOGIN_COMPANY} replace />}
+      />
+
+      {/* Password Reset */}
+      <Route
+        path={ROUTES.RESET_PASSWORD}
+        element={<ResetPasswordPage />}
       />
 
       {/* Company Registration */}

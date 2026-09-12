@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { requestPasswordReset } from "../../services/auth";
+import { AuthenticationError, requestPasswordReset } from "../../services/auth";
 import type { LoginMode } from "../../types/auth";
 
 interface ForgotPasswordFormProps {
@@ -38,8 +38,12 @@ export function ForgotPasswordForm({
     try {
       await requestPasswordReset(cleanEmail);
       setSubmitted(true);
-    } catch {
-      setError("Could not send password reset link. Please try again.");
+    } catch (err: unknown) {
+      if (err instanceof AuthenticationError) {
+        setError(err.message);
+      } else {
+        setError("Could not send password reset link. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

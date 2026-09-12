@@ -95,7 +95,48 @@ function createAuthController(authService) {
     return response.redirect(`${clientOrigin}/login?authenticated=true`);
   }
 
-  return { signIn, registerCompany, signOut, me, googleCallback };
+  async function forgotPassword(request, response) {
+    const result = await authService.requestPasswordReset(
+      request.validatedBody.email,
+    );
+
+    return response.status(200).json({
+      success: true,
+      message: result.message,
+      ...(result.resetToken && { resetToken: result.resetToken }),
+    });
+  }
+
+  async function verifyResetToken(request, response) {
+    const token = request.query.token;
+    const result = await authService.verifyResetToken(token);
+
+    return response.status(200).json({
+      success: true,
+      data: result,
+    });
+  }
+
+  async function resetPassword(request, response) {
+    const { token, password } = request.validatedBody;
+    const result = await authService.resetPassword(token, password);
+
+    return response.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  }
+
+  return {
+    signIn,
+    registerCompany,
+    signOut,
+    me,
+    googleCallback,
+    forgotPassword,
+    verifyResetToken,
+    resetPassword,
+  };
 }
 
 module.exports = { createAuthController };
