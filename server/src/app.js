@@ -16,9 +16,23 @@ function createApp(dependencies = {}) {
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
   app.use(helmet());
+  const configuredOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+  const allowedOrigins = new Set([
+    configuredOrigin,
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+  ]);
+
   app.use(
     cors({
-      origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.has(origin)) {
+          return callback(null, true);
+        }
+        return callback(null, false);
+      },
       credentials: true,
     }),
   );
@@ -32,7 +46,6 @@ function createApp(dependencies = {}) {
     response.status(200).json({ status: "ok" });
   });
 
-  app.use("/api/auth", createAuthRouter(authService, { passport }));
   const authRouter = createAuthRouter(authService, { passport });
   app.use("/api/auth", authRouter);
   app.use("/auth", authRouter);

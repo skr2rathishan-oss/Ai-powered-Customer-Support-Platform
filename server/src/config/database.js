@@ -74,6 +74,33 @@ async function initMySQLSchema() {
         console.log("Successfully ensured google_id column exists in users table");
       }
     }
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        reset_id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        token_hash VARCHAR(255) NOT NULL UNIQUE,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME NULL,
+        used TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_token_hash (token_hash),
+        INDEX idx_user_id (user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Ensure used_at column exists in case the table was created earlier without it
+    const [usedAtCol] = await pool.query(
+      "SHOW COLUMNS FROM password_reset_tokens LIKE 'used_at'",
+    );
+    if (usedAtCol.length === 0) {
+      await pool.query(
+        "ALTER TABLE password_reset_tokens ADD COLUMN used_at DATETIME NULL AFTER expires_at",
+      );
+      if (process.env.NODE_ENV !== "test") {
+        console.log("Successfully added used_at column to password_reset_tokens");
+      }
+    }
   } catch (error) {
     if (process.env.NODE_ENV !== "test") {
       console.warn("Schema initialization notice:", error.message);

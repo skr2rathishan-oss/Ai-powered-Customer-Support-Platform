@@ -210,8 +210,65 @@ function validateCompanyRegistrationPayload(payload) {
   };
 }
 
+function validateForgotPasswordPayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return {
+      value: {},
+      errors: [{ field: "body", message: "Request body must be a JSON object" }],
+    };
+  }
+
+  const errors = [];
+  const email =
+    typeof payload.email === "string"
+      ? payload.email.trim().toLowerCase()
+      : "";
+
+  if (!email) {
+    errors.push({ field: "email", message: "Email is required" });
+  } else if (email.length > 254 || !EMAIL_PATTERN.test(email)) {
+    errors.push({
+      field: "email",
+      message: "Enter a valid email address",
+    });
+  }
+
+  return { value: { email }, errors };
+}
+
+function validateResetPasswordPayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return {
+      value: {},
+      errors: [{ field: "body", message: "Request body must be a JSON object" }],
+    };
+  }
+
+  const errors = [];
+  const token = typeof payload.token === "string" ? payload.token.trim() : "";
+  const password = typeof payload.password === "string" ? payload.password : "";
+
+  if (!token) {
+    errors.push({ field: "token", message: "Reset token is required" });
+  }
+
+  if (!password) {
+    errors.push({ field: "password", message: "Password is required" });
+  } else if (!PASSWORD_PATTERN.test(password)) {
+    errors.push({
+      field: "password",
+      message:
+        "Password must be 8 to 128 characters and include uppercase, lowercase, number, and special character",
+    });
+  }
+
+  return { value: { token, password }, errors };
+}
+
 module.exports = {
   INDUSTRIES,
   validateSignInPayload,
   validateCompanyRegistrationPayload,
+  validateForgotPasswordPayload,
+  validateResetPasswordPayload,
 };

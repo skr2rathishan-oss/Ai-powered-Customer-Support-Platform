@@ -74,4 +74,13 @@ test.describe("SupportPilot E2E Tests", () => {
     await expect(googleButton).toBeVisible();
     await expect(googleButton).toContainText("Continue with Google");
   });
+
+  test("Reset Password page displays invalid link message when token is missing or invalid", async ({ page }) => {
+    await page.goto("/reset-password");
+    await expect(page.getByRole("heading", { name: /Invalid or expired link/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Request New Reset Link/i })).toBeVisible();
+
+    await page.goto("/reset-password?token=invalid-token-12345");
+    await expect(page.getByRole("heading", { name: /Invalid or expired link/i })).toBeVisible();
+  });
 });
