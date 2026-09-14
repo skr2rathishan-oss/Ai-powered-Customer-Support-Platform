@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { AdminRouteGuard } from "../../components/admin/AdminRouteGuard";
 import { AdminLayout } from "../../components/admin/AdminLayout";
@@ -19,13 +19,13 @@ export function PlatformAdminDashboardPage() {
   const [timeframe, setTimeframe] = useState("12months");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  async function loadData(tf = timeframe, isRefresh = false) {
+  const loadData = useCallback(async (selectedTimeframe: string, isRefresh = false) => {
     if (isRefresh) setIsRefreshing(true);
     else setLoading(true);
     setError(null);
 
     try {
-      const overview = await fetchAdminDashboard(tf);
+      const overview = await fetchAdminDashboard(selectedTimeframe);
       setData(overview);
     } catch (err: unknown) {
       setError(
@@ -37,11 +37,11 @@ export function PlatformAdminDashboardPage() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     loadData(timeframe);
-  }, [timeframe]);
+  }, [timeframe, loadData]);
 
   function handleTimeframeChange(newTf: string) {
     setTimeframe(newTf);

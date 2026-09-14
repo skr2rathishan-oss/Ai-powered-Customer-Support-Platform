@@ -59,6 +59,10 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
           } else {
             setChecking(false);
           }
+          setStoredUser(null);
+          setIsAuthorized(false);
+          setChecking(false);
+          navigate(ROUTES.LOGIN);
         }
       }
     }

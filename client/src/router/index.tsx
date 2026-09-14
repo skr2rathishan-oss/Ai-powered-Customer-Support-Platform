@@ -6,6 +6,8 @@ import { CompanyRegisterPage } from "../pages/auth/CompanyRegisterPage";
 import { DashboardPlaceholderPage } from "../pages/auth/DashboardPlaceholderPage";
 import { ResetPasswordPage } from "../pages/auth/ResetPasswordPage";
 import { PlatformAdminDashboardPage } from "../pages/admin/PlatformAdminDashboardPage";
+import { PlatformCompaniesPage } from "../pages/admin/PlatformCompaniesPage";
+import { PlatformSettingsPage } from "../pages/admin/PlatformSettingsPage";
 
 export function AppRouter() {
   return (
@@ -47,6 +49,18 @@ export function AppRouter() {
       <Route
         path={ROUTES.ADMIN_DASHBOARD}
         element={<PlatformAdminDashboardPage />}
+      />
+
+      {/* Platform Admin Companies Directory */}
+      <Route
+        path={ROUTES.ADMIN_COMPANIES}
+        element={<PlatformCompaniesPage />}
+      />
+
+      {/* Platform Admin Settings & Telemetry */}
+      <Route
+        path={ROUTES.ADMIN_SETTINGS}
+        element={<PlatformSettingsPage />}
       />
 
       {/* Fallback to Landing Page */}

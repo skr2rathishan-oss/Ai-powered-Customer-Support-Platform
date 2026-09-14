@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { ROUTES } from "../../router/routes";
 import { logout } from "../../services/auth";
 import type { PlatformHealthItem, PlatformActivity } from "../../services/admin";
@@ -20,17 +20,27 @@ export function AdminLayout({
   isRefreshing = false,
 }: AdminLayoutProps) {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
+  const location = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   async function handleSignOut() {
     try {
       await logout();
-    } catch (_e) {
-      // Proceed to login regardless
+    } finally {
+      navigate(ROUTES.LOGIN);
     }
-    navigate(ROUTES.LOGIN);
   }
+
+  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && searchQuery.trim()) {
+      navigate(`${ROUTES.ADMIN_COMPANIES}?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  }
+
+  const isDashboard = location.pathname === ROUTES.ADMIN_DASHBOARD;
+  const isCompanies = location.pathname.startsWith(ROUTES.ADMIN_COMPANIES);
+  const isSettings = location.pathname.startsWith(ROUTES.ADMIN_SETTINGS);
 
   return (
     <div className="min-h-screen bg-[#f8f9fc] text-[#1c1b23] font-sans antialiased overflow-x-hidden">
@@ -60,67 +70,71 @@ export function AdminLayout({
 
         {/* Navigation Links */}
         <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
-          {/* Active: Dashboard */}
+          {/* Dashboard Link */}
           <Link
             to={ROUTES.ADMIN_DASHBOARD}
-            className="relative flex items-center gap-3 text-[#6D5EF5] font-semibold p-3.5 bg-[#6D5EF5]/8 rounded-xl transition-all group overflow-hidden no-underline"
+            className={`relative flex items-center gap-3 p-3.5 rounded-xl transition-all group overflow-hidden no-underline ${
+              isDashboard
+                ? "text-[#6D5EF5] font-semibold bg-[#6D5EF5]/8"
+                : "text-[#474555] hover:bg-[#f6f2ff] hover:text-[#1c1b23]"
+            }`}
           >
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#6D5EF5] rounded-r-full" />
-            <span className="material-symbols-outlined text-xl transition-transform duration-300 group-hover:scale-110">
+            {isDashboard && (
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#6D5EF5] rounded-r-full" />
+            )}
+            <span
+              className={`material-symbols-outlined text-xl transition-transform duration-300 group-hover:scale-110 ${
+                isDashboard ? "text-[#6D5EF5]" : "text-[#787586] group-hover:text-[#6D5EF5]"
+              }`}
+            >
               dashboard
             </span>
             <span className="text-sm">Dashboard</span>
           </Link>
 
-          <a
-            href="#companies"
-            className="flex items-center gap-3 text-[#474555] p-3.5 hover:bg-[#f6f2ff] hover:text-[#1c1b23] transition-all rounded-xl group no-underline"
+          {/* Companies Link */}
+          <Link
+            to={ROUTES.ADMIN_COMPANIES}
+            className={`relative flex items-center gap-3 p-3.5 rounded-xl transition-all group overflow-hidden no-underline ${
+              isCompanies
+                ? "text-[#6D5EF5] font-semibold bg-[#6D5EF5]/8"
+                : "text-[#474555] hover:bg-[#f6f2ff] hover:text-[#1c1b23]"
+            }`}
           >
-            <span className="material-symbols-outlined text-xl text-[#787586] group-hover:text-[#6D5EF5] transition-colors duration-300">
+            {isCompanies && (
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#6D5EF5] rounded-r-full" />
+            )}
+            <span
+              className={`material-symbols-outlined text-xl transition-transform duration-300 group-hover:scale-110 ${
+                isCompanies ? "text-[#6D5EF5]" : "text-[#787586] group-hover:text-[#6D5EF5]"
+              }`}
+            >
               business
             </span>
             <span className="text-sm">Companies</span>
-          </a>
+          </Link>
 
-          <a
-            href="#users"
-            className="flex items-center gap-3 text-[#474555] p-3.5 hover:bg-[#f6f2ff] hover:text-[#1c1b23] transition-all rounded-xl group no-underline"
+          {/* Settings Link */}
+          <Link
+            to={ROUTES.ADMIN_SETTINGS}
+            className={`relative flex items-center gap-3 p-3.5 rounded-xl transition-all group overflow-hidden no-underline ${
+              isSettings
+                ? "text-[#6D5EF5] font-semibold bg-[#6D5EF5]/8"
+                : "text-[#474555] hover:bg-[#f6f2ff] hover:text-[#1c1b23]"
+            }`}
           >
-            <span className="material-symbols-outlined text-xl text-[#787586] group-hover:text-[#6D5EF5] transition-colors duration-300">
-              group
-            </span>
-            <span className="text-sm">Users</span>
-          </a>
-
-          <a
-            href="#analytics"
-            className="flex items-center gap-3 text-[#474555] p-3.5 hover:bg-[#f6f2ff] hover:text-[#1c1b23] transition-all rounded-xl group no-underline"
-          >
-            <span className="material-symbols-outlined text-xl text-[#787586] group-hover:text-[#6D5EF5] transition-colors duration-300">
-              analytics
-            </span>
-            <span className="text-sm">Analytics</span>
-          </a>
-
-          <a
-            href="#reports"
-            className="flex items-center gap-3 text-[#474555] p-3.5 hover:bg-[#f6f2ff] hover:text-[#1c1b23] transition-all rounded-xl group no-underline"
-          >
-            <span className="material-symbols-outlined text-xl text-[#787586] group-hover:text-[#6D5EF5] transition-colors duration-300">
-              assessment
-            </span>
-            <span className="text-sm">Reports</span>
-          </a>
-
-          <a
-            href="#settings"
-            className="flex items-center gap-3 text-[#474555] p-3.5 hover:bg-[#f6f2ff] hover:text-[#1c1b23] transition-all rounded-xl group no-underline"
-          >
-            <span className="material-symbols-outlined text-xl text-[#787586] group-hover:text-[#6D5EF5] transition-colors duration-300">
+            {isSettings && (
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#6D5EF5] rounded-r-full" />
+            )}
+            <span
+              className={`material-symbols-outlined text-xl transition-transform duration-300 group-hover:scale-110 ${
+                isSettings ? "text-[#6D5EF5]" : "text-[#787586] group-hover:text-[#6D5EF5]"
+              }`}
+            >
               settings
             </span>
             <span className="text-sm">Settings</span>
-          </a>
+          </Link>
         </nav>
 
         {/* Operational Status Box */}
@@ -158,10 +172,11 @@ export function AdminLayout({
           </span>
           <input
             className="w-full bg-[#f6f2ff]/60 border border-[#e2e4e9] rounded-full py-2 pl-11 pr-4 text-xs text-[#1c1b23] focus:ring-3 focus:ring-[#6D5EF5]/20 focus:border-[#6D5EF5] outline-none transition-all placeholder-[#787586]"
-            placeholder="Search companies, administrators, tickets..."
+            placeholder="Search companies, administrators, tickets... (Press Enter)"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
           />
         </div>
 
@@ -367,4 +382,3 @@ export function AdminLayout({
     </div>
   );
 }
-

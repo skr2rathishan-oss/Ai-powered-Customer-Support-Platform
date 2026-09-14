@@ -6,6 +6,8 @@ export const ROUTES = {
   REGISTER_COMPANY: "/company/register",
   DASHBOARD_COMPANY: "/company/dashboard",
   ADMIN_DASHBOARD: "/admin/dashboard",
+  ADMIN_COMPANIES: "/admin/companies",
+  ADMIN_SETTINGS: "/admin/settings",
   RESET_PASSWORD: "/reset-password",
 } as const;
 

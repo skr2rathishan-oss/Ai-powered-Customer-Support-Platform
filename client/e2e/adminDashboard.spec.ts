@@ -1,12 +1,15 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Platform Admin Dashboard E2E", () => {
-  test("unauthenticated user accessing /admin/dashboard is redirected or blocked", async ({
+  test.beforeEach(async ({ page }) => {
+    await page.context().clearCookies();
+  });
+
+  test("unauthenticated user accessing /admin/dashboard is redirected to login", async ({
     page,
   }) => {
     await page.goto("/admin/dashboard");
-    // Should either redirect to login or show Access Restricted
-    await expect(page).toHaveURL(/\/login|\/admin\/dashboard/);
+    await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
   });
 
   test("Platform Admin signs in and accesses Platform Admin Dashboard", async ({
@@ -14,9 +17,9 @@ test.describe("Platform Admin Dashboard E2E", () => {
   }) => {
     await page.goto("/login");
 
-    // Fill Platform Admin credentials
-    await page.locator('input[type="email"], input[name="email"]').fill("admin@supportpilot.com");
-    await page.locator('input[type="password"], input[name="password"]').fill("Admin@SupportPilot2026!");
+    // Fill Platform Admin credentials using specific IDs
+    await page.locator("#individual-email").fill("admin@supportpilot.com");
+    await page.locator("#individual-password").fill("Admin@SupportPilot2026!");
 
     // Submit login
     await page.locator('button[type="submit"]').click();
@@ -34,4 +37,3 @@ test.describe("Platform Admin Dashboard E2E", () => {
     await expect(page.getByText("Platform Health")).toBeVisible();
   });
 });
-
