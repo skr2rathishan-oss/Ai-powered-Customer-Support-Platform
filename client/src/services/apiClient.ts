@@ -18,17 +18,75 @@ interface RequestOptions extends RequestInit {
   data?: unknown;
 }
 
+const TOKEN_STORAGE_KEY = "supportpilot.auth_token";
+const USER_STORAGE_KEY = "supportpilot.auth_user";
+
+export function getAuthToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token: string): void {
+  try {
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  } catch {
+    // Storage access might be restricted
+  }
+}
+
+export function removeAuthToken(): void {
+  try {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+  } catch {
+    // Ignore
+  }
+}
+
+export function getStoredUser<T = unknown>(): T | null {
+  try {
+    const raw = localStorage.getItem(USER_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredUser(user: unknown): void {
+  try {
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  } catch {
+    // Ignore
+  }
+}
+
+export function removeStoredUser(): void {
+  try {
+    localStorage.removeItem(USER_STORAGE_KEY);
+  } catch {
+    // Ignore
+  }
+}
+
 export async function apiRequest<T = unknown>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
   const { data, headers, ...customConfig } = options;
+  const token = getAuthToken();
+
+  const authHeader: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
 
   const config: RequestInit = {
     method: data ? "POST" : "GET",
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...authHeader,
       ...headers,
     },
     ...customConfig,

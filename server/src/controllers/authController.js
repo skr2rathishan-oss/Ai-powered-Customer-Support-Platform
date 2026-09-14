@@ -13,7 +13,7 @@ function createAuthController(authService) {
     return response.status(200).json({
       success: true,
       message: "Sign-in successful",
-      data: { user },
+      data: { user, token: accessToken },
     });
   }
 
@@ -28,7 +28,7 @@ function createAuthController(authService) {
     return response.status(201).json({
       success: true,
       message: "Company registration successful",
-      data: { user },
+      data: { user, token: accessToken },
     });
   }
 

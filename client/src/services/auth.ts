@@ -5,16 +5,21 @@ import type {
   LoginMode,
   LoginResult,
 } from "../types/auth";
-
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000"
-).replace(/\/$/, "");
+import {
+  API_BASE_URL,
+  getAuthToken,
+  setAuthToken,
+  setStoredUser,
+  removeAuthToken,
+  removeStoredUser,
+} from "./apiClient";
 
 interface SignInResponse {
   success: boolean;
   message: string;
   data: {
     user: LoginResult["user"];
+    token?: string;
   };
 }
 
@@ -97,6 +102,12 @@ export async function registerCompany(
   }
 
   const result = payload as SignInResponse;
+  if (result.data?.token) {
+    setAuthToken(result.data.token);
+  }
+  if (result.data?.user) {
+    setStoredUser(result.data.user);
+  }
   return { message: result.message, user: result.data.user };
 }
 
@@ -107,10 +118,18 @@ async function signIn(
   let response: Response;
 
   try {
+    const token = getAuthToken();
+    const authHeaders: Record<string, string> = token
+      ? { Authorization: `Bearer ${token}` }
+      : {};
+
     response = await fetch(`${API_BASE_URL}/api/auth/sign-in`, {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+      },
       body: JSON.stringify({
         accountType,
         email: credentials.email.trim().toLowerCase(),
@@ -142,10 +161,29 @@ async function signIn(
   }
 
   const result = payload as SignInResponse;
+  if (result.data?.token) {
+    setAuthToken(result.data.token);
+  }
+  if (result.data?.user) {
+    setStoredUser(result.data.user);
+  }
   return {
     message: result.message,
     user: result.data.user,
   };
+}
+
+export async function signOut(): Promise<void> {
+  removeAuthToken();
+  removeStoredUser();
+  try {
+    await fetch(`${API_BASE_URL}/api/auth/sign-out`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    // Ignore network error on sign-out
+  }
 }
 
 // The server currently exposes one role-aware sign-in endpoint. Keep these
@@ -161,6 +199,8 @@ export function loginCompany(
 ): Promise<LoginResult> {
   return signIn("company", credentials);
 }
+
+export const logout = signOut;
 
 export async function requestPasswordReset(email: string): Promise<string> {
   let response: Response;

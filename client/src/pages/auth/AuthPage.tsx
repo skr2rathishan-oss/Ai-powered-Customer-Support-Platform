@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { AuthShell } from "../../components/auth/AuthShell";
 import { AuthToggle } from "../../components/auth/AuthToggle";
 import { ForgotPasswordForm } from "../../components/auth/ForgotPasswordForm";
 import { LoginForm } from "../../components/auth/LoginForm";
+import { ROUTES } from "../../router/routes";
 import { loginCompany, loginIndividual } from "../../services/auth";
 import { API_BASE_URL, apiRequest } from "../../services/apiClient";
 import type {
@@ -64,6 +65,7 @@ interface AuthPageProps {
 }
 
 export function AuthPage({ mode: activeMode }: AuthPageProps) {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [forms, setForms] = useState<Record<LoginMode, LoginFormValues>>(() => ({
     individual: createInitialValues("individual"),
@@ -89,7 +91,7 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
   // Handle redirect from Google OAuth Callback
   useEffect(() => {
     if (searchParams.get("authenticated") === "true") {
-      apiRequest<{ data?: { user: { email: string } } }>("/api/auth/me")
+      apiRequest<{ data?: { user: { email: string; roleName?: string; accountType?: string } } }>("/api/auth/me")
         .then((response) => {
           const user = response?.data?.user;
           if (user) {
@@ -102,6 +104,15 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
                 detail: { mode: "individual", user },
               }),
             );
+
+            const role = (user.roleName || "").toLowerCase().trim();
+            if (role === "platform admin" || role.includes("platform")) {
+              navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
+            } else if (user.accountType === "company" || role === "company admin" || role.includes("company")) {
+              navigate(ROUTES.DASHBOARD_COMPANY, { replace: true });
+            } else {
+              navigate(ROUTES.HOME, { replace: true });
+            }
           }
         })
         .catch(() => {
@@ -117,7 +128,26 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
           "Google authentication failed or was cancelled. Please try again.",
       }));
     }
-  }, [searchParams]);
+  }, [searchParams, navigate]);
+
+  // If already authenticated as Platform Admin on mount, automatically redirect
+  useEffect(() => {
+    if (!searchParams.get("authenticated") && !searchParams.get("error")) {
+      apiRequest<{ data?: { user: { email: string; roleName?: string; accountType?: string } } }>("/api/auth/me")
+        .then((response) => {
+          const user = response?.data?.user;
+          if (user) {
+            const role = (user.roleName || "").toLowerCase().trim();
+            if (role === "platform admin" || role.includes("platform")) {
+              navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
+            }
+          }
+        })
+        .catch(() => {
+          // Not logged in; remain on login form
+        });
+    }
+  }, [navigate, searchParams]);
 
   const anyLoading = useMemo(
     () => loading.individual || loading.company,
@@ -186,6 +216,15 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
           detail: { mode, user: result.user },
         }),
       );
+
+      const role = (result.user?.roleName || "").toLowerCase().trim();
+      if (role === "platform admin" || role.includes("platform")) {
+        navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
+      } else if (mode === "company" || role === "company admin" || role.includes("company")) {
+        navigate(ROUTES.DASHBOARD_COMPANY, { replace: true });
+      } else {
+        navigate(ROUTES.HOME, { replace: true });
+      }
     } catch (error) {
       setSubmitErrors((current) => ({
         ...current,

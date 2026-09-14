@@ -5,6 +5,7 @@ export const ROUTES = {
   COMPANY_LEGACY: "/company",
   REGISTER_COMPANY: "/company/register",
   DASHBOARD_COMPANY: "/company/dashboard",
+  ADMIN_DASHBOARD: "/admin/dashboard",
   RESET_PASSWORD: "/reset-password",
 } as const;
 

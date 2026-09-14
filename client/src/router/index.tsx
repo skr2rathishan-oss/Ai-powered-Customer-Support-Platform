@@ -5,6 +5,7 @@ import { AuthPage } from "../pages/auth/AuthPage";
 import { CompanyRegisterPage } from "../pages/auth/CompanyRegisterPage";
 import { DashboardPlaceholderPage } from "../pages/auth/DashboardPlaceholderPage";
 import { ResetPasswordPage } from "../pages/auth/ResetPasswordPage";
+import { PlatformAdminDashboardPage } from "../pages/admin/PlatformAdminDashboardPage";
 
 export function AppRouter() {
   return (
@@ -40,6 +41,12 @@ export function AppRouter() {
       <Route
         path={ROUTES.DASHBOARD_COMPANY}
         element={<DashboardPlaceholderPage />}
+      />
+
+      {/* Platform Admin Dashboard */}
+      <Route
+        path={ROUTES.ADMIN_DASHBOARD}
+        element={<PlatformAdminDashboardPage />}
       />
 
       {/* Fallback to Landing Page */}
