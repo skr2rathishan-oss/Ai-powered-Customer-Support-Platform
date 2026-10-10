@@ -68,7 +68,7 @@ function createAdminController(adminService) {
   }
 
   async function updateSettings(request, response) {
-    const data = await adminService.updatePlatformSettings(request.body || {});
+    const data = await adminService.updatePlatformSettings(request.body, request.auth);
 
     return response.status(200).json(data);
   }

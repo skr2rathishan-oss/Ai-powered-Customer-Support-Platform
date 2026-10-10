@@ -62,6 +62,7 @@ function getMySQLPool() {
 
 async function initMySQLSchema() {
   const pool = getMySQLPool();
+  await ensurePlatformSettingsTable(pool);
   try {
     const [columns] = await pool.query(
       "SHOW COLUMNS FROM users LIKE 'google_id'",
@@ -104,6 +105,24 @@ async function initMySQLSchema() {
   } catch (error) {
     if (process.env.NODE_ENV !== "test") {
       console.warn("Schema initialization notice:", error.message);
+    }
+  }
+}
+
+async function ensurePlatformSettingsTable(pool) {
+  try {
+    // Single-row table (settings_id is always 1); no seed row, defaults apply until first save
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS platform_settings (
+        settings_id TINYINT PRIMARY KEY,
+        settings_json LONGTEXT NOT NULL,
+        updated_by INT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Platform settings schema notice:", error.message);
     }
   }
 }

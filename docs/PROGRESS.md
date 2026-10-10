@@ -12,7 +12,7 @@ Environment notes:
 - Google OAuth / password reset exist server-side; verify UI wiring later.
 
 ## Checklist (foundations first)
-- [ ] 1. Persist platform settings in MySQL (`platform_settings` table), make test-smtp script not break `npm test`
+- [x] 1. Persist platform settings in MySQL (`platform_settings` table), make test-smtp script not break `npm test` — settings now stored in MySQL `platform_settings` (single JSON row), validated allowlist, secrets never stored; npm test runs only test/**
 - [ ] 2. Company-admin guard + `/api/company/me` endpoint and company dashboard shell (layout, nav, overview stats)
 - [ ] 3. Tickets data model + API (create/list/get/update status/assign) scoped by company
 - [ ] 4. Company portal: ticket management UI
