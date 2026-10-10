@@ -22,6 +22,8 @@ Environment notes:
 - [ ] 8. Customer experience: submit ticket / view own tickets (UI + API)
 - [ ] 9. Agent experience: assigned-ticket queue and replies
 - [ ] 10. Public/auth polish: dead links, Google OAuth UI wiring, role-based redirects after login
+- [ ] 12. Wire stored platform settings into runtime (JWT expiry, cookie flags, password policy, SMTP, maintenance mode); they are currently stored but env vars still drive behavior
 - [ ] 11. Playwright e2e coverage + final lint/build/test pass
 
 ## Log
+- Run 1: item 1 done (reviewer: no blocking issues; follow-up item 12 added).
