@@ -10,6 +10,8 @@ const { createAdminRouter } = require("./routes/adminRoutes");
 const { createAdminService } = require("./services/adminService");
 const { createCompanyRouter } = require("./routes/companyRoutes");
 const { createCompanyService } = require("./services/companyService");
+const { createTicketRouter } = require("./routes/ticketRoutes");
+const { createTicketService } = require("./services/ticketService");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 
 function createApp(dependencies = {}) {
@@ -18,6 +20,8 @@ function createApp(dependencies = {}) {
   const adminService = dependencies.adminService || createAdminService(dependencies);
   const companyService =
     dependencies.companyService || createCompanyService(dependencies);
+  const ticketService =
+    dependencies.ticketService || createTicketService(dependencies);
   const passport = dependencies.passport || configurePassport(dependencies);
 
   app.disable("x-powered-by");
@@ -58,6 +62,7 @@ function createApp(dependencies = {}) {
   app.use("/api/auth", authRouter);
   app.use("/auth", authRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/company/tickets", createTicketRouter(ticketService));
   app.use("/api/company", createCompanyRouter(companyService));
   app.use(notFoundHandler);
   app.use(errorHandler);

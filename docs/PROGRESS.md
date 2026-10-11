@@ -14,7 +14,7 @@ Environment notes:
 ## Checklist (foundations first)
 - [x] 1. Persist platform settings in MySQL (`platform_settings` table), make test-smtp script not break `npm test` — settings now stored in MySQL `platform_settings` (single JSON row), validated allowlist, secrets never stored; npm test runs only test/**
 - [x] 2. Company-admin guard + `GET /api/company/me` + company portal shell (layout, nav, overview) — done; dev mock backend via `cd server && npm run mock`; reviewer: no blocking issues
-- [ ] 3. Tickets data model + API (create/list/get/update status/assign) scoped by company
+- [x] 3. Tickets data model + API (create/list/get/update status/assign) scoped by company — `tickets` table, `/api/company/tickets` routes, overview counts and `features.tickets` live; mock server seeded
 - [ ] 4. Company portal: ticket management UI
 - [ ] 5. Support agents: model + invite/assign API and UI
 - [ ] 6. FAQs: model + CRUD API and UI
@@ -28,3 +28,4 @@ Environment notes:
 ## Log
 - Run 1: item 1 done (reviewer: no blocking issues; follow-up item 12 added).
 - Run 2: item 2 done (company portal shell, mock-server added; Playwright spec written but not executed, no Chromium here).
+- Run 3: item 3 done (server only; contract in docs/plans/tickets-api.md).

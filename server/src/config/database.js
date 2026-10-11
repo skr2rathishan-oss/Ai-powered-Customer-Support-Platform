@@ -63,6 +63,7 @@ function getMySQLPool() {
 async function initMySQLSchema() {
   const pool = getMySQLPool();
   await ensurePlatformSettingsTable(pool);
+  await ensureTicketsTable(pool);
   try {
     const [columns] = await pool.query(
       "SHOW COLUMNS FROM users LIKE 'google_id'",
@@ -123,6 +124,38 @@ async function ensurePlatformSettingsTable(pool) {
   } catch (error) {
     if (process.env.NODE_ENV !== "test") {
       console.warn("Platform settings schema notice:", error.message);
+    }
+  }
+}
+
+async function ensureTicketsTable(pool) {
+  try {
+    // No foreign keys: tenancy (company_id, assigned_agent_id) is enforced in the
+    // application so a column type mismatch can never silently skip table creation
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tickets (
+        ticket_id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        customer_id INT NULL,
+        requester_name VARCHAR(150) NULL,
+        requester_email VARCHAR(255) NULL,
+        subject VARCHAR(200) NOT NULL,
+        description TEXT NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'Open',
+        priority VARCHAR(20) NOT NULL DEFAULT 'Medium',
+        assigned_agent_id INT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        resolved_at DATETIME NULL,
+        INDEX idx_tickets_company_status (company_id, status, created_at),
+        INDEX idx_tickets_company_priority (company_id, priority),
+        INDEX idx_tickets_company_agent (company_id, assigned_agent_id),
+        INDEX idx_tickets_company_resolved (company_id, resolved_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Tickets schema notice:", error.message);
     }
   }
 }

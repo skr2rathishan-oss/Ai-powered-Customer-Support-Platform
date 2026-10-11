@@ -68,7 +68,138 @@ async function buildMockApp() {
       email: "agent@acme-demo.com", passwordHash: companyHash,
       onlineStatus: "Offline", accountStatus: "Active", roleName: "Support Agent",
     },
+    {
+      userId: 5, companyId: 2, firstName: "Gina", lastName: "Globex",
+      email: "agent@globex.example", passwordHash: companyHash,
+      onlineStatus: "Online", accountStatus: "Active", roleName: "Support Agent",
+    },
   ];
+
+  const daysAgo = (days) => new Date(Date.now() - days * 86400000).toISOString();
+  let nextTicketId = 11;
+  const tickets = [
+    { ticketId: 1, companyId: 1, subject: "Cannot reset my password", description: "The reset email never arrives.", status: "Open", priority: "High", assignedAgentId: 4, requesterName: "Priya Nair", requesterEmail: "priya@example.com", createdAt: daysAgo(1), resolvedAt: null },
+    { ticketId: 2, companyId: 1, subject: "Invoice shows wrong amount", description: "March invoice is double the plan price.", status: "In Progress", priority: "Urgent", assignedAgentId: 4, requesterName: "Tom Becker", requesterEmail: "tom@example.com", createdAt: daysAgo(2), resolvedAt: null },
+    { ticketId: 3, companyId: 1, subject: "Feature request: dark mode", description: "Please add a dark theme to the dashboard.", status: "Open", priority: "Low", assignedAgentId: null, requesterName: "Lena Ortiz", requesterEmail: "lena@example.com", createdAt: daysAgo(3), resolvedAt: null },
+    { ticketId: 4, companyId: 1, subject: "Login page shows error 500", description: "Intermittent server error on sign in.", status: "Open", priority: "Urgent", assignedAgentId: null, requesterName: null, requesterEmail: null, createdAt: daysAgo(0), resolvedAt: null },
+    { ticketId: 5, companyId: 1, subject: "How do I export my data?", description: "Looking for a CSV export option.", status: "Resolved", priority: "Medium", assignedAgentId: null, requesterName: "Omar Haddad", requesterEmail: "omar@example.com", createdAt: daysAgo(1), resolvedAt: new Date().toISOString() },
+    { ticketId: 6, companyId: 1, subject: "Account upgrade question", description: "What is included in the Pro plan?", status: "Closed", priority: "Low", assignedAgentId: null, requesterName: "Mia Chen", requesterEmail: "mia@example.com", createdAt: daysAgo(9), resolvedAt: daysAgo(8) },
+    { ticketId: 7, companyId: 1, subject: "Widget not loading on Safari", description: "Chat widget is blank on Safari 17.", status: "In Progress", priority: "Medium", assignedAgentId: null, requesterName: "Jon Park", requesterEmail: "jon@example.com", createdAt: daysAgo(4), resolvedAt: null },
+    { ticketId: 8, companyId: 1, subject: "Change billing email", description: "Please update our billing contact.", status: "Open", priority: "Medium", assignedAgentId: null, requesterName: "Eve Stone", requesterEmail: "eve@example.com", createdAt: daysAgo(5), resolvedAt: null },
+    { ticketId: 9, companyId: 2, subject: "Order arrived damaged", description: "Box was crushed on arrival.", status: "Open", priority: "High", assignedAgentId: 5, requesterName: "Rae Fox", requesterEmail: "rae@example.com", createdAt: daysAgo(1), resolvedAt: null },
+    { ticketId: 10, companyId: 2, subject: "Where is my refund?", description: "Refund requested two weeks ago.", status: "Open", priority: "Medium", assignedAgentId: null, requesterName: "Ian Cole", requesterEmail: "ian@example.com", createdAt: daysAgo(2), resolvedAt: null },
+  ].map((ticket) => ({ customerId: null, updatedAt: ticket.createdAt, ...ticket }));
+
+  const isClosed = (status) => status === "Resolved" || status === "Closed";
+  const isSameDay = (iso) => new Date(iso).toDateString() === new Date().toDateString();
+
+  const presentTicket = (ticket) => {
+    const agent = users.find(
+      (u) => u.userId === ticket.assignedAgentId && u.companyId === ticket.companyId,
+    );
+    return {
+      ...ticket,
+      assigneeName: agent ? `${agent.firstName} ${agent.lastName}`.trim() : null,
+    };
+  };
+
+  const isAssignableAgent = (u, companyId) =>
+    u.companyId === Number(companyId) &&
+    u.roleName === "Support Agent" &&
+    u.accountStatus === "Active";
+
+  const ticketModel = {
+    createTicket: async (companyId, input) => {
+      const now = new Date().toISOString();
+      const ticket = {
+        ticketId: nextTicketId++,
+        companyId: Number(companyId),
+        customerId: input.customerId ?? null,
+        requesterName: input.requesterName ?? null,
+        requesterEmail: input.requesterEmail ?? null,
+        subject: input.subject,
+        description: input.description,
+        status: input.status,
+        priority: input.priority,
+        assignedAgentId: input.assignedAgentId ?? null,
+        createdAt: now,
+        updatedAt: now,
+        resolvedAt: isClosed(input.status) ? now : null,
+      };
+      tickets.push(ticket);
+      return presentTicket(ticket);
+    },
+    findTicketById: async (companyId, ticketId) => {
+      const ticket = tickets.find(
+        (t) => t.companyId === Number(companyId) && t.ticketId === Number(ticketId),
+      );
+      return ticket ? presentTicket(ticket) : null;
+    },
+    listTickets: async (companyId, filters = {}) => {
+      const term = filters.search ? filters.search.toLowerCase() : null;
+      const matches = tickets
+        .filter((t) => t.companyId === Number(companyId))
+        .filter((t) => !filters.status || t.status === filters.status)
+        .filter((t) => !filters.priority || t.priority === filters.priority)
+        .filter((t) => {
+          if (filters.unassigned) return t.assignedAgentId === null;
+          if (filters.assigneeId) return t.assignedAgentId === filters.assigneeId;
+          return true;
+        })
+        .filter(
+          (t) =>
+            !term ||
+            [t.subject, t.requesterName, t.requesterEmail].some(
+              (field) => field && field.toLowerCase().includes(term),
+            ),
+        )
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.ticketId - a.ticketId);
+      const page = filters.page || 1;
+      const limit = filters.limit || 20;
+      return {
+        tickets: matches.slice((page - 1) * limit, page * limit).map(presentTicket),
+        total: matches.length,
+        page,
+        limit,
+      };
+    },
+    updateTicket: async (companyId, ticketId, changes = {}) => {
+      const ticket = tickets.find(
+        (t) => t.companyId === Number(companyId) && t.ticketId === Number(ticketId),
+      );
+      if (!ticket) return null;
+      if (changes.status !== undefined) {
+        ticket.status = changes.status;
+        ticket.resolvedAt = isClosed(changes.status)
+          ? ticket.resolvedAt || new Date().toISOString()
+          : null;
+      }
+      if (changes.priority !== undefined) ticket.priority = changes.priority;
+      if (changes.assignedAgentId !== undefined) {
+        ticket.assignedAgentId = changes.assignedAgentId;
+      }
+      ticket.updatedAt = new Date().toISOString();
+      return presentTicket(ticket);
+    },
+    findAssignableAgent: async (companyId, agentId) => {
+      const agent = users.find(
+        (u) => u.userId === Number(agentId) && isAssignableAgent(u, companyId),
+      );
+      return agent
+        ? { userId: agent.userId, firstName: agent.firstName, lastName: agent.lastName, email: agent.email }
+        : null;
+    },
+    listAssignableAgents: async (companyId) =>
+      users
+        .filter((u) => isAssignableAgent(u, companyId))
+        .map((u) => ({
+          userId: u.userId,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          email: u.email,
+          onlineStatus: u.onlineStatus,
+        })),
+  };
 
   const findUser = (email) =>
     users.find((u) => u.email.toLowerCase() === String(email).toLowerCase().trim()) || null;
@@ -127,7 +258,7 @@ async function buildMockApp() {
       suspendedPercentage: 0,
       totalUsers: users.length,
       companyAdmins: 2,
-      supportAgents: 1,
+      supportAgents: 2,
       monthlyGrowth: "0.0%",
     }),
     getRegistrationTrends: async () => [],
@@ -182,6 +313,18 @@ async function buildMockApp() {
       supportAgents: users.filter(
         (u) => u.companyId === Number(companyId) && u.roleName === "Support Agent",
       ).length,
+      openTickets: tickets.filter(
+        (t) =>
+          t.companyId === Number(companyId) &&
+          (t.status === "Open" || t.status === "In Progress"),
+      ).length,
+      resolvedToday: tickets.filter(
+        (t) =>
+          t.companyId === Number(companyId) &&
+          isClosed(t.status) &&
+          t.resolvedAt &&
+          isSameDay(t.resolvedAt),
+      ).length,
     }),
   };
 
@@ -191,6 +334,7 @@ async function buildMockApp() {
     tokenModel,
     adminModel,
     companyPortalModel,
+    ticketModel,
   });
 }
 

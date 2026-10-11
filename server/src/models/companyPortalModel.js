@@ -36,7 +36,9 @@ async function findCompanyAdminContext(userId) {
 }
 
 async function getCompanyOverviewCounts(companyId) {
-  const [rows] = await getMySQLPool().execute(
+  const pool = getMySQLPool();
+
+  const [agentRows] = await pool.execute(
     `SELECT COUNT(*) AS supportAgents
      FROM users AS u
      INNER JOIN roles AS r ON r.role_id = u.role_id
@@ -44,7 +46,28 @@ async function getCompanyOverviewCounts(companyId) {
     [companyId, "Support Agent"],
   );
 
-  return { supportAgents: Number(rows[0]?.supportAgents || 0) };
+  const [openRows] = await pool.execute(
+    `SELECT COUNT(*) AS openTickets
+     FROM tickets
+     WHERE company_id = ? AND status IN ('Open', 'In Progress')`,
+    [companyId],
+  );
+
+  const [resolvedRows] = await pool.execute(
+    `SELECT COUNT(*) AS resolvedToday
+     FROM tickets
+     WHERE company_id = ?
+       AND status IN ('Resolved', 'Closed')
+       AND resolved_at >= CURDATE()
+       AND resolved_at < CURDATE() + INTERVAL 1 DAY`,
+    [companyId],
+  );
+
+  return {
+    supportAgents: Number(agentRows[0]?.supportAgents || 0),
+    openTickets: Number(openRows[0]?.openTickets || 0),
+    resolvedToday: Number(resolvedRows[0]?.resolvedToday || 0),
+  };
 }
 
 module.exports = { findCompanyAdminContext, getCompanyOverviewCounts };
