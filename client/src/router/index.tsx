@@ -7,6 +7,8 @@ import { CompanyRouteGuard } from "../components/company/CompanyRouteGuard";
 import { CompanyLayout } from "../components/company/CompanyLayout";
 import { CompanyDashboardPage } from "../pages/company/CompanyDashboardPage";
 import { CompanyComingSoonPage } from "../pages/company/CompanyComingSoonPage";
+import { CompanyTicketsPage } from "../pages/company/CompanyTicketsPage";
+import { CompanyTicketDetailPage } from "../pages/company/CompanyTicketDetailPage";
 import { ResetPasswordPage } from "../pages/auth/ResetPasswordPage";
 import { PlatformAdminDashboardPage } from "../pages/admin/PlatformAdminDashboardPage";
 import { PlatformCompaniesPage } from "../pages/admin/PlatformCompaniesPage";
@@ -51,13 +53,11 @@ export function AppRouter() {
           />
           <Route
             path={ROUTES.COMPANY_TICKETS}
-            element={
-              <CompanyComingSoonPage
-                title="Tickets"
-                icon="confirmation_number"
-                description="Review, assign and resolve customer tickets in one place."
-              />
-            }
+            element={<CompanyTicketsPage />}
+          />
+          <Route
+            path={ROUTES.COMPANY_TICKET_DETAIL}
+            element={<CompanyTicketDetailPage />}
           />
           <Route
             path={ROUTES.COMPANY_AGENTS}

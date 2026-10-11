@@ -78,7 +78,11 @@ export function CompanyLayout() {
 
         <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
-            const active = location.pathname === item.to;
+            const active =
+              item.to === ROUTES.DASHBOARD_COMPANY
+                ? location.pathname === item.to
+                : location.pathname === item.to ||
+                  location.pathname.startsWith(`${item.to}/`);
             const soon = item.feature ? !overview.features[item.feature] : false;
             return (
               <Link

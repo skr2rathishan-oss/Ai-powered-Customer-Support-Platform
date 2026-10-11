@@ -24,7 +24,7 @@ test.describe("Company portal shell", () => {
 
     await page.getByRole("link", { name: /Tickets/ }).click();
     await expect(page).toHaveURL(/\/company\/tickets/);
-    await expect(page.getByText("Coming soon", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tickets", level: 1 })).toBeVisible();
   });
 
   test("platform admin is shown Access Restricted", async ({ page }) => {
