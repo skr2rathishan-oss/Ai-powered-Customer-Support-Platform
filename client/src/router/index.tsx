@@ -11,6 +11,13 @@ import { CompanyFaqsPage } from "../pages/company/CompanyFaqsPage";
 import { CompanyAgentsPage } from "../pages/company/CompanyAgentsPage";
 import { CompanyTicketsPage } from "../pages/company/CompanyTicketsPage";
 import { CompanyTicketDetailPage } from "../pages/company/CompanyTicketDetailPage";
+import { CustomerRegisterPage } from "../pages/auth/CustomerRegisterPage";
+import { CustomerRouteGuard } from "../components/customer/CustomerRouteGuard";
+import { CustomerLayout } from "../components/customer/CustomerLayout";
+import { CustomerTicketsPage } from "../pages/customer/CustomerTicketsPage";
+import { CustomerNewTicketPage } from "../pages/customer/CustomerNewTicketPage";
+import { CustomerTicketDetailPage } from "../pages/customer/CustomerTicketDetailPage";
+import { CustomerHelpPage } from "../pages/customer/CustomerHelpPage";
 import { ResetPasswordPage } from "../pages/auth/ResetPasswordPage";
 import { PlatformAdminDashboardPage } from "../pages/admin/PlatformAdminDashboardPage";
 import { PlatformCompaniesPage } from "../pages/admin/PlatformCompaniesPage";
@@ -45,6 +52,35 @@ export function AppRouter() {
         path={ROUTES.REGISTER_COMPANY}
         element={<CompanyRegisterPage />}
       />
+
+      {/* Customer Registration */}
+      <Route
+        path={ROUTES.REGISTER_CUSTOMER}
+        element={<CustomerRegisterPage />}
+      />
+
+      {/* Customer Support Portal (server-verified Customer only) */}
+      <Route element={<CustomerRouteGuard />}>
+        <Route element={<CustomerLayout />}>
+          <Route
+            path="/support"
+            element={<Navigate to={ROUTES.CUSTOMER_TICKETS} replace />}
+          />
+          <Route
+            path={ROUTES.CUSTOMER_TICKETS}
+            element={<CustomerTicketsPage />}
+          />
+          <Route
+            path={ROUTES.CUSTOMER_NEW_TICKET}
+            element={<CustomerNewTicketPage />}
+          />
+          <Route
+            path={ROUTES.CUSTOMER_TICKET_DETAIL}
+            element={<CustomerTicketDetailPage />}
+          />
+          <Route path={ROUTES.CUSTOMER_HELP} element={<CustomerHelpPage />} />
+        </Route>
+      </Route>
 
       {/* Company Portal (server-verified Company Admin only) */}
       <Route element={<CompanyRouteGuard />}>

@@ -5,6 +5,7 @@ const { authenticate } = require("../middleware/authenticate");
 const {
   validateSignInRequest,
   validateCompanyRegistrationRequest,
+  validateCustomerRegistrationRequest,
   validateForgotPasswordRequest,
   validateResetPasswordRequest,
 } = require("../middleware/validateRequest");
@@ -65,6 +66,12 @@ function createAuthRouter(authService, dependencies = {}) {
     registrationLimiter,
     validateCompanyRegistrationRequest,
     asyncHandler(controller.registerCompany),
+  );
+  router.post(
+    "/customer/register",
+    registrationLimiter,
+    validateCustomerRegistrationRequest,
+    asyncHandler(controller.registerCustomer),
   );
   router.post("/sign-out", controller.signOut);
   router.get("/me", authenticate, controller.me);

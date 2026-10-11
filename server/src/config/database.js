@@ -66,6 +66,7 @@ async function initMySQLSchema() {
   await ensureTicketsTable(pool);
   await ensureFaqsTable(pool);
   await ensureCompanyAiSettingsTable(pool);
+  await ensureCustomerSupport(pool);
   try {
     const [columns] = await pool.query(
       "SHOW COLUMNS FROM users LIKE 'google_id'",
@@ -215,6 +216,40 @@ async function ensureCompanyAiSettingsTable(pool) {
   } catch (error) {
     if (process.env.NODE_ENV !== "test") {
       console.warn("AI settings schema notice:", error.message);
+    }
+  }
+}
+
+async function ensureCustomerSupport(pool) {
+  // The roles table shape beyond role_name is unknown, so this is best effort.
+  // Deployments may need to create the Customer role row manually.
+  try {
+    await pool.query(
+      `INSERT INTO roles (role_name)
+       SELECT 'Customer' FROM DUAL
+       WHERE NOT EXISTS (SELECT 1 FROM roles WHERE role_name = 'Customer')`,
+    );
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn(
+        "Customer role could not be created automatically; add a 'Customer' row to roles manually:",
+        error.message,
+      );
+    }
+  }
+
+  try {
+    const [indexes] = await pool.query(
+      "SHOW INDEX FROM tickets WHERE Key_name = 'idx_tickets_customer'",
+    );
+    if (indexes.length === 0) {
+      await pool.query(
+        "ALTER TABLE tickets ADD INDEX idx_tickets_customer (company_id, customer_id, created_at)",
+      );
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Customer tickets index notice:", error.message);
     }
   }
 }

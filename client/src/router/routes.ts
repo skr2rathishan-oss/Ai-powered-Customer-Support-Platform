@@ -4,6 +4,11 @@ export const ROUTES = {
   LOGIN_COMPANY: "/login/company",
   COMPANY_LEGACY: "/company",
   REGISTER_COMPANY: "/company/register",
+  REGISTER_CUSTOMER: "/register",
+  CUSTOMER_TICKETS: "/support/tickets",
+  CUSTOMER_NEW_TICKET: "/support/tickets/new",
+  CUSTOMER_TICKET_DETAIL: "/support/tickets/:ticketId",
+  CUSTOMER_HELP: "/support/help",
   DASHBOARD_COMPANY: "/company/dashboard",
   COMPANY_TICKETS: "/company/tickets",
   COMPANY_TICKET_DETAIL: "/company/tickets/:ticketId",
@@ -20,3 +25,6 @@ export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];
 
 export const companyTicketPath = (id: number | string) =>
   `/company/tickets/${id}`;
+
+export const customerTicketPath = (id: number | string) =>
+  `/support/tickets/${id}`;

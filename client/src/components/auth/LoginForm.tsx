@@ -150,7 +150,12 @@ export function LoginForm({
           <span>New to SupportPilot?</span>
           <Link to={ROUTES.REGISTER_COMPANY}>Register now</Link>
         </div>
-      ) : null}
+      ) : (
+        <div className="company-register-prompt">
+          <span>Need support from a company?</span>
+          <Link to={ROUTES.REGISTER_CUSTOMER}>Create a customer account</Link>
+        </div>
+      )}
     </form>
   );
 }

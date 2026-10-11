@@ -32,6 +32,21 @@ function createAuthController(authService) {
     });
   }
 
+  async function registerCustomer(request, response) {
+    const { user, accessToken } = await authService.registerCustomer(
+      request.validatedBody,
+    );
+
+    setAuthCookie(response, accessToken);
+    response.set("Cache-Control", "no-store");
+
+    return response.status(201).json({
+      success: true,
+      message: "Registration successful",
+      data: { user, token: accessToken },
+    });
+  }
+
   function signOut(_request, response) {
     clearAuthCookie(response);
     return response.status(200).json({
@@ -130,6 +145,7 @@ function createAuthController(authService) {
   return {
     signIn,
     registerCompany,
+    registerCustomer,
     signOut,
     me,
     googleCallback,

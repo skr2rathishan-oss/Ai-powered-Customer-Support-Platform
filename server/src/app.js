@@ -18,6 +18,10 @@ const { createFaqRouter } = require("./routes/faqRoutes");
 const { createFaqService } = require("./services/faqService");
 const { createAiSettingsRouter } = require("./routes/aiSettingsRoutes");
 const { createAiSettingsService } = require("./services/aiSettingsService");
+const { createCustomerRouter } = require("./routes/customerRoutes");
+const { createCustomerService } = require("./services/customerService");
+const { createPublicRouter } = require("./routes/publicRoutes");
+const defaultCustomerModel = require("./models/customerModel");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 
 function createApp(dependencies = {}) {
@@ -33,6 +37,8 @@ function createApp(dependencies = {}) {
   const faqService = dependencies.faqService || createFaqService(dependencies);
   const aiSettingsService =
     dependencies.aiSettingsService || createAiSettingsService(dependencies);
+  const customerService =
+    dependencies.customerService || createCustomerService(dependencies);
   const passport = dependencies.passport || configurePassport(dependencies);
 
   app.disable("x-powered-by");
@@ -81,6 +87,11 @@ function createApp(dependencies = {}) {
     createAiSettingsRouter(aiSettingsService),
   );
   app.use("/api/company", createCompanyRouter(companyService));
+  app.use("/api/customer", createCustomerRouter(customerService));
+  app.use(
+    "/api/public",
+    createPublicRouter(dependencies.customerModel || defaultCustomerModel),
+  );
   app.use(notFoundHandler);
   app.use(errorHandler);
 

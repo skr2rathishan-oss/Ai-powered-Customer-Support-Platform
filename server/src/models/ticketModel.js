@@ -189,7 +189,66 @@ async function listAssignableAgents(companyId, options) {
   return rows;
 }
 
+// Customer-scoped reads: company_id and customer_id are always the first two
+// parameters and are part of EVERY WHERE clause.
+async function findCustomerTicketById(companyId, customerId, ticketId, options) {
+  const [rows] = await poolFrom(options).execute(
+    `${TICKET_SELECT}
+     WHERE t.company_id = ? AND t.customer_id = ? AND t.ticket_id = ?
+     LIMIT 1`,
+    [companyId, customerId, ticketId],
+  );
+
+  return rows[0] || null;
+}
+
+async function listCustomerTickets(companyId, customerId, filters = {}, options) {
+  const pool = poolFrom(options);
+  const page = Number(filters.page) || 1;
+  const limit = Number(filters.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const conditions = ["t.company_id = ?", "t.customer_id = ?"];
+  const params = [companyId, customerId];
+
+  if (filters.status) {
+    conditions.push("t.status = ?");
+    params.push(filters.status);
+  }
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
+
+  const [countRows] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM tickets AS t ${whereClause}`,
+    params,
+  );
+
+  const [tickets] = await pool.query(
+    `${TICKET_SELECT}
+     ${whereClause}
+     ORDER BY t.created_at DESC, t.ticket_id DESC
+     LIMIT ? OFFSET ?`,
+    [...params, limit, offset],
+  );
+
+  return { tickets, total: Number(countRows[0]?.total || 0), page, limit };
+}
+
+async function countOpenCustomerTickets(companyId, customerId, options) {
+  const [rows] = await poolFrom(options).execute(
+    `SELECT COUNT(*) AS total FROM tickets AS t
+     WHERE t.company_id = ? AND t.customer_id = ?
+       AND t.status IN ('Open', 'In Progress')`,
+    [companyId, customerId],
+  );
+
+  return Number(rows[0]?.total || 0);
+}
+
 module.exports = {
+  listCustomerTickets,
+  findCustomerTicketById,
+  countOpenCustomerTickets,
   createTicket,
   findTicketById,
   listTickets,

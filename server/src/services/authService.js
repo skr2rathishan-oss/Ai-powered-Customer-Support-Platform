@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const userModel = require("../models/userModel");
 const companyModel = require("../models/companyModel");
 const tokenModel = require("../models/tokenModel");
+const defaultCustomerModel = require("../models/customerModel");
 const AppError = require("../utils/AppError");
 const { createAccessToken } = require("../utils/token");
 const { sendPasswordResetEmail } = require("./emailService");
@@ -19,6 +20,7 @@ function createAuthService(dependencies = {}) {
   const users = dependencies.userModel || userModel;
   const companies = dependencies.companyModel || companyModel;
   const tokens = dependencies.tokenModel || tokenModel;
+  const customers = dependencies.customerModel || defaultCustomerModel;
   const mailSender =
     dependencies.sendPasswordResetEmail || sendPasswordResetEmail;
   const createToken = dependencies.createAccessToken || createAccessToken;
@@ -127,6 +129,42 @@ function createAuthService(dependencies = {}) {
       user: safeUser,
       accessToken: createToken(safeUser),
     };
+  }
+
+  async function registerCustomer(registration) {
+    const company = await customers.findActiveCompany(registration.companyId);
+    if (!company) {
+      throw new AppError("Select an active company", 422, "COMPANY_NOT_FOUND", [
+        { field: "companyId", message: "Select an active company" },
+      ]);
+    }
+
+    if (await users.findByEmail(registration.email)) {
+      throw new AppError("An account with this email already exists", 409, "EMAIL_EXISTS", [
+        { field: "email", message: "An account with this email already exists" },
+      ]);
+    }
+
+    const passwordHash = await hashPassword(registration.password);
+    const customer = await customers.createCustomer({
+      companyId: company.companyId,
+      firstName: registration.firstName,
+      lastName: registration.lastName,
+      email: registration.email,
+      passwordHash,
+    });
+
+    const safeUser = {
+      accountType: "individual",
+      userId: customer.userId,
+      email: customer.email,
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      onlineStatus: "Offline",
+      roleName: "Customer",
+    };
+
+    return { user: safeUser, accessToken: createToken(safeUser) };
   }
 
   async function setPassword(userId, rawPassword) {
@@ -271,6 +309,7 @@ function createAuthService(dependencies = {}) {
   return {
     signIn,
     registerCompany,
+    registerCustomer,
     generateToken,
     setPassword,
     requestPasswordReset,

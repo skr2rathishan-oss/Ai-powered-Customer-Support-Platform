@@ -110,6 +110,8 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
               navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
             } else if (user.accountType === "company" || role === "company admin" || role.includes("company")) {
               navigate(ROUTES.DASHBOARD_COMPANY, { replace: true });
+            } else if (role === "customer") {
+              navigate(ROUTES.CUSTOMER_TICKETS, { replace: true });
             } else {
               navigate(ROUTES.HOME, { replace: true });
             }
@@ -130,7 +132,7 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
     }
   }, [searchParams, navigate]);
 
-  // If already authenticated as Platform Admin on mount, automatically redirect
+  // If already authenticated as Platform Admin or Customer on mount, automatically redirect
   useEffect(() => {
     if (!searchParams.get("authenticated") && !searchParams.get("error")) {
       apiRequest<{ data?: { user: { email: string; roleName?: string; accountType?: string } } }>("/api/auth/me")
@@ -140,6 +142,8 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
             const role = (user.roleName || "").toLowerCase().trim();
             if (role === "platform admin" || role.includes("platform")) {
               navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
+            } else if (role === "customer") {
+              navigate(ROUTES.CUSTOMER_TICKETS, { replace: true });
             }
           }
         })
@@ -222,6 +226,8 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
         navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
       } else if (mode === "company" || role === "company admin" || role.includes("company")) {
         navigate(ROUTES.DASHBOARD_COMPANY, { replace: true });
+      } else if (role === "customer") {
+        navigate(ROUTES.CUSTOMER_TICKETS, { replace: true });
       } else {
         navigate(ROUTES.HOME, { replace: true });
       }

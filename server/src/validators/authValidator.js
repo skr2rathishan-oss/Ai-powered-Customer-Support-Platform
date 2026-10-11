@@ -267,6 +267,8 @@ function validateResetPasswordPayload(payload) {
 
 module.exports = {
   EMAIL_PATTERN,
+  PASSWORD_PATTERN,
+  NAME_PATTERN,
   INDUSTRIES,
   validateSignInPayload,
   validateCompanyRegistrationPayload,
