@@ -63,10 +63,18 @@ async function getCompanyOverviewCounts(companyId) {
     [companyId],
   );
 
+  const [faqRows] = await pool.execute(
+    `SELECT COUNT(*) AS faqArticles
+     FROM faqs
+     WHERE company_id = ? AND is_published = 1`,
+    [companyId],
+  );
+
   return {
     supportAgents: Number(agentRows[0]?.supportAgents || 0),
     openTickets: Number(openRows[0]?.openTickets || 0),
     resolvedToday: Number(resolvedRows[0]?.resolvedToday || 0),
+    faqArticles: Number(faqRows[0]?.faqArticles || 0),
   };
 }
 

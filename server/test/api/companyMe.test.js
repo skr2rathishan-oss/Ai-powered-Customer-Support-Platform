@@ -143,18 +143,19 @@ test("GET /api/company/me", async (context) => {
     assert.equal(body.data.overview.openTickets, 0);
     assert.equal(body.data.overview.aiResolutionRate, null);
     assert.deepEqual(body.data.overview.features, {
-      tickets: true, agents: true, faqs: false, aiSettings: false,
+      tickets: true, agents: true, faqs: true, aiSettings: false,
     });
     assert.ok(!/passwordHash|password_hash|should-never-leak/i.test(JSON.stringify(body)));
   });
 
   await context.test("ticket counts surface in the overview", async () => {
-    countsImpl = async () => ({ supportAgents: 3, openTickets: 5, resolvedToday: 2 });
+    countsImpl = async () => ({ supportAgents: 3, openTickets: 5, resolvedToday: 2, faqArticles: 4 });
     const response = await get("/api/company/me", companyToken());
     const body = await response.json();
     assert.equal(body.data.overview.supportAgents, 3);
     assert.equal(body.data.overview.openTickets, 5);
     assert.equal(body.data.overview.resolvedToday, 2);
+    assert.equal(body.data.overview.faqArticles, 4);
   });
 
   await context.test("missing count keys default to 0", async () => {
@@ -164,6 +165,7 @@ test("GET /api/company/me", async (context) => {
     assert.equal(body.data.overview.supportAgents, 0);
     assert.equal(body.data.overview.openTickets, 0);
     assert.equal(body.data.overview.resolvedToday, 0);
+    assert.equal(body.data.overview.faqArticles, 0);
   });
 
   await context.test("sends Cache-Control: no-store", async () => {

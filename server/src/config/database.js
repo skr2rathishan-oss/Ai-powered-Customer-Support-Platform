@@ -64,6 +64,7 @@ async function initMySQLSchema() {
   const pool = getMySQLPool();
   await ensurePlatformSettingsTable(pool);
   await ensureTicketsTable(pool);
+  await ensureFaqsTable(pool);
   try {
     const [columns] = await pool.query(
       "SHOW COLUMNS FROM users LIKE 'google_id'",
@@ -156,6 +157,34 @@ async function ensureTicketsTable(pool) {
   } catch (error) {
     if (process.env.NODE_ENV !== "test") {
       console.warn("Tickets schema notice:", error.message);
+    }
+  }
+}
+
+async function ensureFaqsTable(pool) {
+  try {
+    // No foreign key on company_id, same reasoning as tickets: tenancy is
+    // enforced in every WHERE and a type mismatch must not skip table creation
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS faqs (
+        faq_id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        question VARCHAR(300) NOT NULL,
+        answer TEXT NOT NULL,
+        category VARCHAR(60) NULL,
+        is_published TINYINT(1) NOT NULL DEFAULT 0,
+        sort_order INT NOT NULL DEFAULT 0,
+        created_by INT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_faqs_company_order (company_id, sort_order, faq_id),
+        INDEX idx_faqs_company_published (company_id, is_published),
+        INDEX idx_faqs_company_category (company_id, category)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("FAQs schema notice:", error.message);
     }
   }
 }

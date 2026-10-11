@@ -7,6 +7,7 @@ import { CompanyRouteGuard } from "../components/company/CompanyRouteGuard";
 import { CompanyLayout } from "../components/company/CompanyLayout";
 import { CompanyDashboardPage } from "../pages/company/CompanyDashboardPage";
 import { CompanyComingSoonPage } from "../pages/company/CompanyComingSoonPage";
+import { CompanyFaqsPage } from "../pages/company/CompanyFaqsPage";
 import { CompanyAgentsPage } from "../pages/company/CompanyAgentsPage";
 import { CompanyTicketsPage } from "../pages/company/CompanyTicketsPage";
 import { CompanyTicketDetailPage } from "../pages/company/CompanyTicketDetailPage";
@@ -66,13 +67,7 @@ export function AppRouter() {
           />
           <Route
             path={ROUTES.COMPANY_FAQS}
-            element={
-              <CompanyComingSoonPage
-                title="FAQs"
-                icon="quiz"
-                description="Build the knowledge base your AI assistant answers from."
-              />
-            }
+            element={<CompanyFaqsPage />}
           />
           <Route
             path={ROUTES.COMPANY_AI_SETTINGS}

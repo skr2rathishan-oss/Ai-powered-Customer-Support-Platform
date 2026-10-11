@@ -362,6 +362,97 @@ async function buildMockApp() {
     },
   };
 
+  // FAQs (company 1 = Acme, company 2 = Globex)
+  const daysAgoIso = (days) => new Date(Date.now() - days * 86400000).toISOString();
+  let nextFaqId = 8;
+  const faqs = [
+    { faqId: 1, companyId: 1, question: "How do I reset my password?", answer: "Open Settings, choose Security, then select Reset password. A link is emailed to you.", category: "Account", isPublished: true, sortOrder: 10 },
+    { faqId: 2, companyId: 1, question: "What are your support hours?", answer: "Our team answers tickets Monday to Friday, 9am to 6pm.", category: "General", isPublished: true, sortOrder: 20 },
+    { faqId: 3, companyId: 1, question: "How do I request a refund?", answer: "Refunds are available within 30 days. Contact billing with your invoice number.", category: "Billing", isPublished: false, sortOrder: 30 },
+    { faqId: 4, companyId: 1, question: "Which plans include API access?", answer: "API access is included in the Pro and Enterprise plans.", category: "Billing", isPublished: true, sortOrder: 40 },
+    { faqId: 5, companyId: 1, question: "Can I export my data?", answer: "Yes. Use Settings, then Data, then Export to download a CSV.", category: null, isPublished: false, sortOrder: 50 },
+    { faqId: 6, companyId: 2, question: "Globex warranty policy", answer: "Globex products carry a two year warranty.", category: "Warranty", isPublished: true, sortOrder: 10 },
+    { faqId: 7, companyId: 2, question: "Globex secret draft question", answer: "Internal draft answer.", category: null, isPublished: false, sortOrder: 20 },
+  ].map((faq, index) => ({ ...faq, createdAt: daysAgoIso(10 - index), updatedAt: daysAgoIso(10 - index) }));
+
+  const copyFaq = (faq) => ({
+    faqId: faq.faqId,
+    question: faq.question,
+    answer: faq.answer,
+    category: faq.category,
+    isPublished: faq.isPublished,
+    sortOrder: faq.sortOrder,
+    createdAt: faq.createdAt,
+    updatedAt: faq.updatedAt,
+  });
+  const companyFaqs = (companyId) => faqs.filter((f) => f.companyId === Number(companyId));
+
+  const faqModel = {
+    listFaqs: async (companyId, filters = {}) => {
+      const search = filters.search ? filters.search.toLowerCase() : null;
+      return companyFaqs(companyId)
+        .filter((f) => !filters.status || f.isPublished === (filters.status === "published"))
+        .filter((f) => !filters.category || f.category === filters.category)
+        .filter(
+          (f) =>
+            !search ||
+            [f.question, f.answer, f.category || ""].some((text) =>
+              text.toLowerCase().includes(search),
+            ),
+        )
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.faqId - b.faqId)
+        .map(copyFaq);
+    },
+    listFaqMeta: async (companyId) => {
+      const own = companyFaqs(companyId);
+      return {
+        categories: [...new Set(own.map((f) => f.category).filter(Boolean))].sort(),
+        total: own.length,
+        published: own.filter((f) => f.isPublished).length,
+      };
+    },
+    countFaqs: async (companyId) => companyFaqs(companyId).length,
+    findFaq: async (companyId, faqId) => {
+      const faq = companyFaqs(companyId).find((f) => f.faqId === Number(faqId));
+      return faq ? copyFaq(faq) : null;
+    },
+    createFaq: async (companyId, _userId, data) => {
+      const own = companyFaqs(companyId);
+      const now = new Date().toISOString();
+      const faq = {
+        faqId: nextFaqId++,
+        companyId: Number(companyId),
+        question: data.question,
+        answer: data.answer,
+        category: data.category ?? null,
+        isPublished: Boolean(data.isPublished),
+        sortOrder:
+          data.sortOrder ?? own.reduce((max, f) => Math.max(max, f.sortOrder), 0) + 10,
+        createdAt: now,
+        updatedAt: now,
+      };
+      faqs.push(faq);
+      return copyFaq(faq);
+    },
+    updateFaq: async (companyId, faqId, changes) => {
+      const faq = companyFaqs(companyId).find((f) => f.faqId === Number(faqId));
+      if (!faq) return null;
+      for (const key of ["question", "answer", "category", "isPublished", "sortOrder"]) {
+        if (changes[key] !== undefined) faq[key] = changes[key];
+      }
+      faq.updatedAt = new Date().toISOString();
+      return copyFaq(faq);
+    },
+    deleteFaq: async (companyId, faqId) => {
+      const index = faqs.findIndex(
+        (f) => f.companyId === Number(companyId) && f.faqId === Number(faqId),
+      );
+      if (index === -1) return false;
+      faqs.splice(index, 1);
+      return true;
+    },
+  };
+
   // Mock mailer: prints the link so a developer can finish the invite flow
   const sendAgentInviteEmail = async (to, link) => {
     console.log("[mock] invite link for", to, link);
@@ -431,6 +522,7 @@ async function buildMockApp() {
       };
     },
     getCompanyOverviewCounts: async (companyId) => ({
+      faqArticles: faqs.filter((f) => f.companyId === Number(companyId) && f.isPublished).length,
       supportAgents: users.filter(
         (u) => u.companyId === Number(companyId) && u.roleName === "Support Agent",
       ).length,
@@ -457,6 +549,7 @@ async function buildMockApp() {
     companyPortalModel,
     ticketModel,
     agentModel,
+    faqModel,
     sendAgentInviteEmail,
   });
 }
