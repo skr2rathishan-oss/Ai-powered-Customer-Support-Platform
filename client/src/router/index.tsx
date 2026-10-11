@@ -3,7 +3,10 @@ import { ROUTES } from "./routes";
 import { LandingPage } from "../pages/landing/LandingPage";
 import { AuthPage } from "../pages/auth/AuthPage";
 import { CompanyRegisterPage } from "../pages/auth/CompanyRegisterPage";
-import { DashboardPlaceholderPage } from "../pages/auth/DashboardPlaceholderPage";
+import { CompanyRouteGuard } from "../components/company/CompanyRouteGuard";
+import { CompanyLayout } from "../components/company/CompanyLayout";
+import { CompanyDashboardPage } from "../pages/company/CompanyDashboardPage";
+import { CompanyComingSoonPage } from "../pages/company/CompanyComingSoonPage";
 import { ResetPasswordPage } from "../pages/auth/ResetPasswordPage";
 import { PlatformAdminDashboardPage } from "../pages/admin/PlatformAdminDashboardPage";
 import { PlatformCompaniesPage } from "../pages/admin/PlatformCompaniesPage";
@@ -39,11 +42,55 @@ export function AppRouter() {
         element={<CompanyRegisterPage />}
       />
 
-      {/* Company Dashboard */}
-      <Route
-        path={ROUTES.DASHBOARD_COMPANY}
-        element={<DashboardPlaceholderPage />}
-      />
+      {/* Company Portal (server-verified Company Admin only) */}
+      <Route element={<CompanyRouteGuard />}>
+        <Route element={<CompanyLayout />}>
+          <Route
+            path={ROUTES.DASHBOARD_COMPANY}
+            element={<CompanyDashboardPage />}
+          />
+          <Route
+            path={ROUTES.COMPANY_TICKETS}
+            element={
+              <CompanyComingSoonPage
+                title="Tickets"
+                icon="confirmation_number"
+                description="Review, assign and resolve customer tickets in one place."
+              />
+            }
+          />
+          <Route
+            path={ROUTES.COMPANY_AGENTS}
+            element={
+              <CompanyComingSoonPage
+                title="Agents"
+                icon="support_agent"
+                description="Invite support agents and manage who handles which tickets."
+              />
+            }
+          />
+          <Route
+            path={ROUTES.COMPANY_FAQS}
+            element={
+              <CompanyComingSoonPage
+                title="FAQs"
+                icon="quiz"
+                description="Build the knowledge base your AI assistant answers from."
+              />
+            }
+          />
+          <Route
+            path={ROUTES.COMPANY_AI_SETTINGS}
+            element={
+              <CompanyComingSoonPage
+                title="AI Settings"
+                icon="smart_toy"
+                description="Tune how the AI assistant responds and when it hands off to a human."
+              />
+            }
+          />
+        </Route>
+      </Route>
 
       {/* Platform Admin Dashboard */}
       <Route

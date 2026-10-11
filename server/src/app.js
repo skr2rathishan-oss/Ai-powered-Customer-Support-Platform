@@ -8,12 +8,16 @@ const { createAuthRouter } = require("./routes/authRoutes");
 const { createAuthService } = require("./services/authService");
 const { createAdminRouter } = require("./routes/adminRoutes");
 const { createAdminService } = require("./services/adminService");
+const { createCompanyRouter } = require("./routes/companyRoutes");
+const { createCompanyService } = require("./services/companyService");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 
 function createApp(dependencies = {}) {
   const app = express();
   const authService = dependencies.authService || createAuthService(dependencies);
   const adminService = dependencies.adminService || createAdminService(dependencies);
+  const companyService =
+    dependencies.companyService || createCompanyService(dependencies);
   const passport = dependencies.passport || configurePassport(dependencies);
 
   app.disable("x-powered-by");
@@ -54,6 +58,7 @@ function createApp(dependencies = {}) {
   app.use("/api/auth", authRouter);
   app.use("/auth", authRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/company", createCompanyRouter(companyService));
   app.use(notFoundHandler);
   app.use(errorHandler);
 
