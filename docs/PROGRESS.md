@@ -16,7 +16,7 @@ Environment notes:
 - [x] 2. Company-admin guard + `GET /api/company/me` + company portal shell (layout, nav, overview) — done; dev mock backend via `cd server && npm run mock`; reviewer: no blocking issues
 - [x] 3. Tickets data model + API (create/list/get/update status/assign) scoped by company — `tickets` table, `/api/company/tickets` routes, overview counts and `features.tickets` live; mock server seeded
 - [x] 4. Company portal: ticket management UI — list (URL-synced filters, search, pagination), create modal, detail page with status/priority/assignee editing at /company/tickets; plan in docs/plans/ticket-management-ui.md
-- [ ] 5. Support agents: model + invite/assign API and UI
+- [x] 5. Support agents: model + invite/assign API and UI — `/api/company/agents` (list, invite via set-password token email, resend, activate/deactivate with open-ticket unassign), /company/agents page; plan in docs/plans/support-agents.md
 - [ ] 6. FAQs: model + CRUD API and UI
 - [ ] 7. Company AI settings: model + API and UI
 - [ ] 8. Customer experience: submit ticket / view own tickets (UI + API)
@@ -30,3 +30,4 @@ Environment notes:
 - Run 2: item 2 done (company portal shell, mock-server added; Playwright spec written but not executed, no Chromium here).
 - Run 3: item 3 done (server only; contract in docs/plans/tickets-api.md).
 - Run 4: item 4 done (client only; Playwright 14/14 passed against mock backend via a throwaway config pointing at chromium-1194; reviewer findings fixed in one round).
+- Run 5: item 5 done (server 213 pass; client lint/build clean; Playwright 22/22 against mock). Notes for item 9: JWTs are stateless, so re-check DB `account_status` on every agent request. Invite resend has no cooldown.

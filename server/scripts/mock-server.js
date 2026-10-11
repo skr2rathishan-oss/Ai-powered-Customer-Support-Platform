@@ -73,10 +73,26 @@ async function buildMockApp() {
       email: "agent@globex.example", passwordHash: companyHash,
       onlineStatus: "Online", accountStatus: "Active", roleName: "Support Agent",
     },
+    {
+      userId: 6, companyId: 1, firstName: "Riya", lastName: "Patel",
+      email: "riya@acme-demo.com", passwordHash: companyHash,
+      onlineStatus: "Online", accountStatus: "Active", roleName: "Support Agent",
+    },
+    {
+      userId: 7, companyId: 1, firstName: "Dev", lastName: "Inactive",
+      email: "dev@acme-demo.com", passwordHash: companyHash,
+      onlineStatus: "Offline", accountStatus: "Inactive", roleName: "Support Agent",
+    },
+    {
+      userId: 8, companyId: 1, firstName: "Nia", lastName: "Pending",
+      email: "nia@acme-demo.com", passwordHash: null,
+      onlineStatus: "Offline", accountStatus: "Active", roleName: "Support Agent",
+    },
   ];
+  let nextUserId = 9;
 
   const daysAgo = (days) => new Date(Date.now() - days * 86400000).toISOString();
-  let nextTicketId = 11;
+  let nextTicketId = 12;
   const tickets = [
     { ticketId: 1, companyId: 1, subject: "Cannot reset my password", description: "The reset email never arrives.", status: "Open", priority: "High", assignedAgentId: 4, requesterName: "Priya Nair", requesterEmail: "priya@example.com", createdAt: daysAgo(1), resolvedAt: null },
     { ticketId: 2, companyId: 1, subject: "Invoice shows wrong amount", description: "March invoice is double the plan price.", status: "In Progress", priority: "Urgent", assignedAgentId: 4, requesterName: "Tom Becker", requesterEmail: "tom@example.com", createdAt: daysAgo(2), resolvedAt: null },
@@ -88,6 +104,7 @@ async function buildMockApp() {
     { ticketId: 8, companyId: 1, subject: "Change billing email", description: "Please update our billing contact.", status: "Open", priority: "Medium", assignedAgentId: null, requesterName: "Eve Stone", requesterEmail: "eve@example.com", createdAt: daysAgo(5), resolvedAt: null },
     { ticketId: 9, companyId: 2, subject: "Order arrived damaged", description: "Box was crushed on arrival.", status: "Open", priority: "High", assignedAgentId: 5, requesterName: "Rae Fox", requesterEmail: "rae@example.com", createdAt: daysAgo(1), resolvedAt: null },
     { ticketId: 10, companyId: 2, subject: "Where is my refund?", description: "Refund requested two weeks ago.", status: "Open", priority: "Medium", assignedAgentId: null, requesterName: "Ian Cole", requesterEmail: "ian@example.com", createdAt: daysAgo(2), resolvedAt: null },
+    { ticketId: 11, companyId: 1, subject: "Old shipping inquiry", description: "Resolved by a former agent.", status: "Resolved", priority: "Low", assignedAgentId: 7, requesterName: "Zed Hall", requesterEmail: "zed@example.com", createdAt: daysAgo(12), resolvedAt: daysAgo(11) },
   ].map((ticket) => ({ customerId: null, updatedAt: ticket.createdAt, ...ticket }));
 
   const isClosed = (status) => status === "Resolved" || status === "Closed";
@@ -208,7 +225,10 @@ async function buildMockApp() {
     findByEmail: async (email) => findUser(email),
     findByGoogleId: async () => null,
     linkGoogleAccount: async () => {},
-    setPassword: async () => {},
+    setPassword: async (userId, passwordHash) => {
+      const user = users.find((u) => u.userId === Number(userId));
+      if (user) user.passwordHash = passwordHash;
+    },
     findOrCreate: async (_data, callback) => callback && callback(new Error("Not supported in mock"), null),
   };
 
@@ -238,12 +258,113 @@ async function buildMockApp() {
     },
   };
 
+  const resetTokens = [];
+  let nextTokenId = 1;
   const tokenModel = {
-    createPasswordResetToken: async () => 1,
-    findTokenByHash: async () => null,
-    findValidToken: async () => null,
-    markTokenUsed: async () => {},
-    invalidateUserTokens: async () => {},
+    createPasswordResetToken: async (userId, tokenHash, expiresAt) => {
+      const tokenId = nextTokenId++;
+      resetTokens.push({ tokenId, userId, tokenHash, expiresAt, used: 0, usedAt: null });
+      return tokenId;
+    },
+    findTokenByHash: async (tokenHash) => {
+      const token = resetTokens.find((t) => t.tokenHash === tokenHash);
+      if (!token) return null;
+      const user = users.find((u) => u.userId === token.userId);
+      return { ...token, email: user?.email, accountStatus: user?.accountStatus };
+    },
+    findValidToken: async (tokenHash) => {
+      const token = resetTokens.find((t) => t.tokenHash === tokenHash);
+      return token && !token.used && new Date(token.expiresAt) > new Date() ? token : null;
+    },
+    markTokenUsed: async (tokenId) => {
+      const token = resetTokens.find((t) => t.tokenId === tokenId);
+      if (token) Object.assign(token, { used: 1, usedAt: new Date().toISOString() });
+    },
+    invalidateUserTokens: async (userId) => {
+      for (const token of resetTokens) {
+        if (token.userId === Number(userId) && !token.used) {
+          Object.assign(token, { used: 1, usedAt: new Date().toISOString() });
+        }
+      }
+    },
+  };
+
+  const isOpenTicket = (t) => t.status === "Open" || t.status === "In Progress";
+  const isAgentRow = (u, companyId) =>
+    u.companyId === Number(companyId) && u.roleName === "Support Agent";
+  const presentAgent = (u, companyId) => ({
+    agentId: u.userId,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    name: `${u.firstName} ${u.lastName}`.trim(),
+    email: u.email,
+    status: u.accountStatus,
+    onlineStatus: u.onlineStatus,
+    invitePending: !u.passwordHash && !u.googleId,
+    openTickets: tickets.filter(
+      (t) => t.companyId === Number(companyId) && t.assignedAgentId === u.userId && isOpenTicket(t),
+    ).length,
+  });
+
+  const agentModel = {
+    listAgents: async (companyId) =>
+      users
+        .filter((u) => isAgentRow(u, companyId))
+        .sort(
+          (a, b) =>
+            a.accountStatus.localeCompare(b.accountStatus) ||
+            a.firstName.localeCompare(b.firstName) ||
+            a.lastName.localeCompare(b.lastName),
+        )
+        .map((u) => presentAgent(u, companyId)),
+    findAgent: async (companyId, agentId) => {
+      const user = users.find((u) => u.userId === Number(agentId) && isAgentRow(u, companyId));
+      return user ? presentAgent(user, companyId) : null;
+    },
+    createAgent: async (companyId, agent) => {
+      if (findUser(agent.email)) {
+        throw Object.assign(new Error("Duplicate entry"), { code: "ER_DUP_ENTRY" });
+      }
+      const user = {
+        userId: nextUserId++,
+        companyId: Number(companyId),
+        firstName: agent.firstName,
+        lastName: agent.lastName,
+        email: agent.email,
+        passwordHash: null,
+        onlineStatus: "Offline",
+        accountStatus: "Active",
+        roleName: "Support Agent",
+      };
+      users.push(user);
+      return presentAgent(user, companyId);
+    },
+    setAgentStatus: async (companyId, agentId, status) => {
+      const user = users.find((u) => u.userId === Number(agentId) && isAgentRow(u, companyId));
+      if (!user) return 0;
+      user.accountStatus = status;
+      return 1;
+    },
+    unassignOpenTickets: async (companyId, agentId) => {
+      let count = 0;
+      for (const ticket of tickets) {
+        if (
+          ticket.companyId === Number(companyId) &&
+          ticket.assignedAgentId === Number(agentId) &&
+          isOpenTicket(ticket)
+        ) {
+          ticket.assignedAgentId = null;
+          ticket.updatedAt = new Date().toISOString();
+          count += 1;
+        }
+      }
+      return count;
+    },
+  };
+
+  // Mock mailer: prints the link so a developer can finish the invite flow
+  const sendAgentInviteEmail = async (to, link) => {
+    console.log("[mock] invite link for", to, link);
   };
 
   let settings = null;
@@ -335,6 +456,8 @@ async function buildMockApp() {
     adminModel,
     companyPortalModel,
     ticketModel,
+    agentModel,
+    sendAgentInviteEmail,
   });
 }
 

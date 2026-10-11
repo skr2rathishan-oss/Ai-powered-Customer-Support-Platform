@@ -143,7 +143,7 @@ test("GET /api/company/me", async (context) => {
     assert.equal(body.data.overview.openTickets, 0);
     assert.equal(body.data.overview.aiResolutionRate, null);
     assert.deepEqual(body.data.overview.features, {
-      tickets: true, agents: false, faqs: false, aiSettings: false,
+      tickets: true, agents: true, faqs: false, aiSettings: false,
     });
     assert.ok(!/passwordHash|password_hash|should-never-leak/i.test(JSON.stringify(body)));
   });

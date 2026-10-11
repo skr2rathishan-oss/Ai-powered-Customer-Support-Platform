@@ -51,7 +51,7 @@ function createCompanyService(dependencies = {}) {
         avgFirstResponseMinutes: null,
         features: {
           tickets: true,
-          agents: false,
+          agents: true,
           faqs: false,
           aiSettings: false,
         },

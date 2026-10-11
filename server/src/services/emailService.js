@@ -222,9 +222,93 @@ function getHtmlEmail(resetLink, appName) {
 `.trim();
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]
+  ));
+}
+
+/**
+ * Sends the invitation a company admin triggers for a new support agent. The
+ * link lets the agent choose a password; it is only ever placed in the body.
+ *
+ * @param {string} toEmail - Agent email address
+ * @param {string} inviteLink - Full URL of the set-password page
+ * @param {{companyName?: string, inviterName?: string}} details
+ */
+async function sendAgentInviteEmail(toEmail, inviteLink, details = {}) {
+  const transporter = createTransporter();
+
+  const appName = process.env.APP_NAME || "SupportPilot";
+  const companyName = details.companyName || "your company";
+  const inviterName = details.inviterName || "A company administrator";
+  const senderEmail =
+    process.env.MAIL_FROM ||
+    process.env.SMTP_FROM ||
+    process.env.MAIL_USER ||
+    process.env.SMTP_USER;
+
+  const text = `
+${appName} - You're invited
+
+${inviterName} invited you to join ${companyName} on ${appName} as a support agent.
+
+Set your password and activate your account using the link below:
+${inviteLink}
+
+This link is temporary and will expire in 72 hours.
+
+If you were not expecting this invitation, you can safely ignore this email.
+
+- The ${appName} Team
+`.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><title>You're invited</title></head>
+<body style="margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f4f7fa;">
+  <div style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 32px;">
+    <h1 style="margin: 0 0 16px; color: #1e293b; font-size: 20px;">You're invited to ${escapeHtml(appName)}</h1>
+    <p style="margin: 0 0 24px; color: #64748b; font-size: 15px; line-height: 1.6;">
+      ${escapeHtml(inviterName)} invited you to join <strong>${escapeHtml(companyName)}</strong> as a support agent.
+      Set your password to activate your account.
+    </p>
+    <p style="margin: 0 0 24px;">
+      <a href="${escapeHtml(inviteLink)}" target="_blank" style="display: inline-block; padding: 12px 28px; background: #6366f1; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px;">Set your password</a>
+    </p>
+    <p style="margin: 0 0 8px; color: #94a3b8; font-size: 13px;">This link expires in <strong>72 hours</strong>. If you were not expecting this invitation, you can ignore this email.</p>
+    <p style="margin: 0; color: #64748b; font-size: 12px; word-break: break-all;">${escapeHtml(inviteLink)}</p>
+  </div>
+</body>
+</html>
+`.trim();
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"${appName}" <${senderEmail}>`,
+      to: toEmail,
+      subject: `You're invited to join ${companyName} on ${appName}`,
+      text,
+      html,
+    });
+    if (process.env.NODE_ENV !== "test") {
+      console.log(`[EMAIL] Agent invite sent (messageId: ${info.messageId})`);
+    }
+    return info;
+  } catch (error) {
+    console.error("[EMAIL] Failed to send agent invite:", {
+      code: error.code || "UNKNOWN",
+      command: error.command || "UNKNOWN",
+    });
+    throw error;
+  }
+}
+
 module.exports = {
   createTransporter,
   verifySMTPConnection,
   sendPasswordResetEmail,
+  sendAgentInviteEmail,
 };
 

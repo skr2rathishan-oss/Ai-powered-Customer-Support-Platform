@@ -7,6 +7,7 @@ import { CompanyRouteGuard } from "../components/company/CompanyRouteGuard";
 import { CompanyLayout } from "../components/company/CompanyLayout";
 import { CompanyDashboardPage } from "../pages/company/CompanyDashboardPage";
 import { CompanyComingSoonPage } from "../pages/company/CompanyComingSoonPage";
+import { CompanyAgentsPage } from "../pages/company/CompanyAgentsPage";
 import { CompanyTicketsPage } from "../pages/company/CompanyTicketsPage";
 import { CompanyTicketDetailPage } from "../pages/company/CompanyTicketDetailPage";
 import { ResetPasswordPage } from "../pages/auth/ResetPasswordPage";
@@ -61,13 +62,7 @@ export function AppRouter() {
           />
           <Route
             path={ROUTES.COMPANY_AGENTS}
-            element={
-              <CompanyComingSoonPage
-                title="Agents"
-                icon="support_agent"
-                description="Invite support agents and manage who handles which tickets."
-              />
-            }
+            element={<CompanyAgentsPage />}
           />
           <Route
             path={ROUTES.COMPANY_FAQS}

@@ -12,6 +12,8 @@ const { createCompanyRouter } = require("./routes/companyRoutes");
 const { createCompanyService } = require("./services/companyService");
 const { createTicketRouter } = require("./routes/ticketRoutes");
 const { createTicketService } = require("./services/ticketService");
+const { createAgentRouter } = require("./routes/agentRoutes");
+const { createAgentService } = require("./services/agentService");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 
 function createApp(dependencies = {}) {
@@ -22,6 +24,8 @@ function createApp(dependencies = {}) {
     dependencies.companyService || createCompanyService(dependencies);
   const ticketService =
     dependencies.ticketService || createTicketService(dependencies);
+  const agentService =
+    dependencies.agentService || createAgentService(dependencies);
   const passport = dependencies.passport || configurePassport(dependencies);
 
   app.disable("x-powered-by");
@@ -63,6 +67,7 @@ function createApp(dependencies = {}) {
   app.use("/auth", authRouter);
   app.use("/api/admin", adminRouter);
   app.use("/api/company/tickets", createTicketRouter(ticketService));
+  app.use("/api/company/agents", createAgentRouter(agentService));
   app.use("/api/company", createCompanyRouter(companyService));
   app.use(notFoundHandler);
   app.use(errorHandler);
