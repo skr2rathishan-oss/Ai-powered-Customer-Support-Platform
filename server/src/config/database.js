@@ -65,6 +65,7 @@ async function initMySQLSchema() {
   await ensurePlatformSettingsTable(pool);
   await ensureTicketsTable(pool);
   await ensureFaqsTable(pool);
+  await ensureCompanyAiSettingsTable(pool);
   try {
     const [columns] = await pool.query(
       "SHOW COLUMNS FROM users LIKE 'google_id'",
@@ -185,6 +186,35 @@ async function ensureFaqsTable(pool) {
   } catch (error) {
     if (process.env.NODE_ENV !== "test") {
       console.warn("FAQs schema notice:", error.message);
+    }
+  }
+}
+
+async function ensureCompanyAiSettingsTable(pool) {
+  try {
+    // No foreign key on company_id, same reasoning as tickets/faqs
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS company_ai_settings (
+        settings_id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        enabled TINYINT(1) NOT NULL DEFAULT 0,
+        assistant_name VARCHAR(40) NOT NULL DEFAULT 'SupportPilot Assistant',
+        tone VARCHAR(20) NOT NULL DEFAULT 'professional',
+        greeting VARCHAR(300) NOT NULL DEFAULT '',
+        answer_from_faqs_only TINYINT(1) NOT NULL DEFAULT 1,
+        confidence_threshold TINYINT UNSIGNED NOT NULL DEFAULT 70,
+        escalate_after_failures TINYINT UNSIGNED NOT NULL DEFAULT 2,
+        fallback_message VARCHAR(300) NOT NULL DEFAULT '',
+        custom_instructions TEXT NULL,
+        updated_by INT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_company_ai_settings_company (company_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("AI settings schema notice:", error.message);
     }
   }
 }

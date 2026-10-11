@@ -20,11 +20,11 @@ export function CompanyDashboardPage() {
   const { user, company, overview } = data;
   const statusActive = company.status.toLowerCase() === "active";
 
-  const steps = [
+  const steps: { label: string; done: boolean; to?: string }[] = [
     { label: "Set up your company profile", done: true },
     { label: "Invite your support agents", done: overview.supportAgents > 0 },
     { label: "Publish FAQ articles for the AI assistant", done: overview.faqArticles > 0 },
-    { label: "Configure AI settings", done: false },
+    { label: "Configure AI settings", done: overview.aiConfigured, to: ROUTES.COMPANY_AI_SETTINGS },
   ];
 
   return (
@@ -133,18 +133,29 @@ export function CompanyDashboardPage() {
                 >
                   {step.done ? "check_circle" : "radio_button_unchecked"}
                 </span>
-                <span className={step.done ? "text-[#787586] line-through" : "text-[#1c1b23]"}>
-                  {step.label}
-                </span>
+                {step.to ? (
+                  <Link
+                    to={step.to}
+                    className={`hover:underline ${
+                      step.done ? "text-[#787586] line-through" : "text-[#1c1b23]"
+                    }`}
+                  >
+                    {step.label}
+                  </Link>
+                ) : (
+                  <span className={step.done ? "text-[#787586] line-through" : "text-[#1c1b23]"}>
+                    {step.label}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
           <p className="text-xs text-[#787586] mt-5">
-            Ticketing, agents, FAQs and AI settings are{" "}
-            <Link to={ROUTES.COMPANY_TICKETS} className="text-[#6D5EF5] font-semibold">
-              rolling out soon
-            </Link>
-            .
+            Keep your FAQs published and review your{" "}
+            <Link to={ROUTES.COMPANY_AI_SETTINGS} className="text-[#6D5EF5] font-semibold">
+              AI settings
+            </Link>{" "}
+            any time.
           </p>
         </section>
       </div>

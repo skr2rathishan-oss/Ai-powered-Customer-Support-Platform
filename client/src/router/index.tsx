@@ -6,7 +6,7 @@ import { CompanyRegisterPage } from "../pages/auth/CompanyRegisterPage";
 import { CompanyRouteGuard } from "../components/company/CompanyRouteGuard";
 import { CompanyLayout } from "../components/company/CompanyLayout";
 import { CompanyDashboardPage } from "../pages/company/CompanyDashboardPage";
-import { CompanyComingSoonPage } from "../pages/company/CompanyComingSoonPage";
+import { CompanyAiSettingsPage } from "../pages/company/CompanyAiSettingsPage";
 import { CompanyFaqsPage } from "../pages/company/CompanyFaqsPage";
 import { CompanyAgentsPage } from "../pages/company/CompanyAgentsPage";
 import { CompanyTicketsPage } from "../pages/company/CompanyTicketsPage";
@@ -71,13 +71,7 @@ export function AppRouter() {
           />
           <Route
             path={ROUTES.COMPANY_AI_SETTINGS}
-            element={
-              <CompanyComingSoonPage
-                title="AI Settings"
-                icon="smart_toy"
-                description="Tune how the AI assistant responds and when it hands off to a human."
-              />
-            }
+            element={<CompanyAiSettingsPage />}
           />
         </Route>
       </Route>

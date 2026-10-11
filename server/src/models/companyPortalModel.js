@@ -70,7 +70,20 @@ async function getCompanyOverviewCounts(companyId) {
     [companyId],
   );
 
+  // Isolated so a missing table cannot zero the other counts
+  let aiConfigured = false;
+  try {
+    const [aiRows] = await pool.execute(
+      "SELECT 1 AS configured FROM company_ai_settings WHERE company_id = ? LIMIT 1",
+      [companyId],
+    );
+    aiConfigured = aiRows.length > 0;
+  } catch (_error) {
+    aiConfigured = false;
+  }
+
   return {
+    aiConfigured,
     supportAgents: Number(agentRows[0]?.supportAgents || 0),
     openTickets: Number(openRows[0]?.openTickets || 0),
     resolvedToday: Number(resolvedRows[0]?.resolvedToday || 0),

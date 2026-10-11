@@ -31,6 +31,7 @@ export interface CompanyOverview {
   resolvedToday: number;
   supportAgents: number;
   faqArticles: number;
+  aiConfigured: boolean;
   aiResolutionRate: number | null;
   avgFirstResponseMinutes: number | null;
   features: CompanyFeatureFlags;

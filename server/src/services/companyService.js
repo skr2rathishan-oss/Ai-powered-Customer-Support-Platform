@@ -12,17 +12,20 @@ function createCompanyService(dependencies = {}) {
     let openTickets = 0;
     let resolvedToday = 0;
     let faqArticles = 0;
+    let aiConfigured = false;
     try {
       const counts = await portal.getCompanyOverviewCounts(context.companyId);
       supportAgents = Number(counts?.supportAgents || 0);
       openTickets = Number(counts?.openTickets || 0);
       resolvedToday = Number(counts?.resolvedToday || 0);
       faqArticles = Number(counts?.faqArticles || 0);
+      aiConfigured = Boolean(counts?.aiConfigured);
     } catch (_error) {
       supportAgents = 0;
       openTickets = 0;
       resolvedToday = 0;
       faqArticles = 0;
+      aiConfigured = false;
     }
 
     return {
@@ -50,13 +53,14 @@ function createCompanyService(dependencies = {}) {
         resolvedToday,
         supportAgents,
         faqArticles,
+        aiConfigured,
         aiResolutionRate: null,
         avgFirstResponseMinutes: null,
         features: {
           tickets: true,
           agents: true,
           faqs: true,
-          aiSettings: false,
+          aiSettings: true,
         },
       },
     };

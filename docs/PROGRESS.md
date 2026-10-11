@@ -18,7 +18,7 @@ Environment notes:
 - [x] 4. Company portal: ticket management UI — list (URL-synced filters, search, pagination), create modal, detail page with status/priority/assignee editing at /company/tickets; plan in docs/plans/ticket-management-ui.md
 - [x] 5. Support agents: model + invite/assign API and UI — `/api/company/agents` (list, invite via set-password token email, resend, activate/deactivate with open-ticket unassign), /company/agents page; plan in docs/plans/support-agents.md
 - [x] 6. FAQs: model + CRUD API and UI — `faqs` table, `/api/company/faqs` (list/filter, create, partial update incl. publish toggle, delete), /company/faqs page; plan in docs/plans/faqs.md. Items 7 and 8 must read only `is_published = 1` rows
-- [ ] 7. Company AI settings: model + API and UI
+- [x] 7. Company AI settings: model + API and UI — `company_ai_settings` table, `GET/PUT /api/company/ai-settings` (whole-document upsert), /company/ai-settings page; plan in docs/plans/company-ai-settings.md. Settings only, no LLM calls
 - [ ] 8. Customer experience: submit ticket / view own tickets (UI + API)
 - [ ] 9. Agent experience: assigned-ticket queue and replies
 - [ ] 10. Public/auth polish: dead links, Google OAuth UI wiring, role-based redirects after login
@@ -32,3 +32,4 @@ Environment notes:
 - Run 4: item 4 done (client only; Playwright 14/14 passed against mock backend via a throwaway config pointing at chromium-1194; reviewer findings fixed in one round).
 - Run 5: item 5 done (server 213 pass; client lint/build clean; Playwright 22/22 against mock). Notes for item 9: JWTs are stateless, so re-check DB `account_status` on every agent request. Invite resend has no cooldown.
 - Run 6: item 6 done (server 250 tests, 248 pass, 2 skipped; client lint/build clean; Playwright 21/21 against mock). Reviewer: no blocking issues; optional follow-ups: strict 500-FAQ cap under concurrency, isolate the FAQ count failure in overview counts.
+- Run 7: item 7 done (settings model/API/UI; server tests green, client lint/build clean; Playwright companyAiSettings 10/10 against mock). Items 8/9 must read effective settings via `resolveAiSettings` (aiSettingsService), honour `enabled`, and keep the FAQ source at `is_published = 1`.

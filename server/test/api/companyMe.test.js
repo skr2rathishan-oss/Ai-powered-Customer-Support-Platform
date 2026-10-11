@@ -143,7 +143,7 @@ test("GET /api/company/me", async (context) => {
     assert.equal(body.data.overview.openTickets, 0);
     assert.equal(body.data.overview.aiResolutionRate, null);
     assert.deepEqual(body.data.overview.features, {
-      tickets: true, agents: true, faqs: true, aiSettings: false,
+      tickets: true, agents: true, faqs: true, aiSettings: true,
     });
     assert.ok(!/passwordHash|password_hash|should-never-leak/i.test(JSON.stringify(body)));
   });
@@ -156,6 +156,26 @@ test("GET /api/company/me", async (context) => {
     assert.equal(body.data.overview.openTickets, 5);
     assert.equal(body.data.overview.resolvedToday, 2);
     assert.equal(body.data.overview.faqArticles, 4);
+  });
+
+  await context.test("aiConfigured reflects the count and defaults to false", async () => {
+    countsImpl = async () => ({ aiConfigured: true });
+    let body = await (await get("/api/company/me", companyToken())).json();
+    assert.equal(body.data.overview.aiConfigured, true);
+
+    countsImpl = async () => ({ aiConfigured: false });
+    body = await (await get("/api/company/me", companyToken())).json();
+    assert.equal(body.data.overview.aiConfigured, false);
+
+    countsImpl = async () => ({});
+    body = await (await get("/api/company/me", companyToken())).json();
+    assert.equal(body.data.overview.aiConfigured, false);
+
+    countsImpl = async () => {
+      throw new Error("counts unavailable");
+    };
+    body = await (await get("/api/company/me", companyToken())).json();
+    assert.equal(body.data.overview.aiConfigured, false);
   });
 
   await context.test("missing count keys default to 0", async () => {

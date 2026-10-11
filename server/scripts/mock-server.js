@@ -387,6 +387,37 @@ async function buildMockApp() {
   });
   const companyFaqs = (companyId) => faqs.filter((f) => f.companyId === Number(companyId));
 
+  // AI settings (Acme has no row on purpose; Globex is configured)
+  const aiSettingsRows = new Map([
+    [
+      2,
+      {
+        enabled: true,
+        assistantName: "Globex Helper",
+        tone: "concise",
+        greeting: "Welcome to Globex.",
+        answerFromFaqsOnly: true,
+        confidenceThreshold: 80,
+        escalateAfterFailures: 5,
+        fallbackMessage: "A Globex specialist will take over.",
+        customInstructions: "",
+        updatedAt: new Date().toISOString(),
+      },
+    ],
+  ]);
+
+  const aiSettingsModel = {
+    findAiSettings: async (companyId) => {
+      const row = aiSettingsRows.get(Number(companyId));
+      return row ? { ...row } : null;
+    },
+    upsertAiSettings: async (companyId, _userId, settings) => {
+      const row = { ...settings, updatedAt: new Date().toISOString() };
+      aiSettingsRows.set(Number(companyId), row);
+      return { ...row };
+    },
+  };
+
   const faqModel = {
     listFaqs: async (companyId, filters = {}) => {
       const search = filters.search ? filters.search.toLowerCase() : null;
@@ -522,6 +553,7 @@ async function buildMockApp() {
       };
     },
     getCompanyOverviewCounts: async (companyId) => ({
+      aiConfigured: aiSettingsRows.has(Number(companyId)),
       faqArticles: faqs.filter((f) => f.companyId === Number(companyId) && f.isPublished).length,
       supportAgents: users.filter(
         (u) => u.companyId === Number(companyId) && u.roleName === "Support Agent",
@@ -550,6 +582,7 @@ async function buildMockApp() {
     ticketModel,
     agentModel,
     faqModel,
+    aiSettingsModel,
     sendAgentInviteEmail,
   });
 }
