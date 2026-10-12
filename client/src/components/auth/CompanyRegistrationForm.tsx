@@ -12,6 +12,8 @@ import {
   validateRegistrationForm,
 } from "../../validation/companyRegistration";
 import { PasswordField } from "./PasswordField";
+import { usePlatformSettings } from "../common/platformSettingsContext";
+import { passwordPolicyHint } from "../../validation/passwordPolicy";
 import { RegistrationField } from "./RegistrationField";
 import { ROUTES } from "../../router/routes";
 
@@ -36,6 +38,7 @@ const initialValues: CompanyRegistrationValues = {
 export function CompanyRegistrationForm({
   onAuthenticated,
 }: CompanyRegistrationFormProps) {
+  const { passwordPolicy } = usePlatformSettings();
   const [values, setValues] =
     useState<CompanyRegistrationValues>(initialValues);
   const [errors, setErrors] = useState<CompanyRegistrationErrors>({});
@@ -55,13 +58,13 @@ export function CompanyRegistrationForm({
   }
 
   function handleBlur(field: CompanyRegistrationField) {
-    const message = validateRegistrationField(field, values);
+    const message = validateRegistrationField(field, values, passwordPolicy);
     setErrors((curr) => ({ ...curr, [field]: message }));
   }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    const nextErrors = validateRegistrationForm(values);
+    const nextErrors = validateRegistrationForm(values, passwordPolicy);
     setErrors(nextErrors);
 
     if (Object.values(nextErrors).some(Boolean)) {
@@ -238,6 +241,7 @@ export function CompanyRegistrationForm({
           <div>
             <PasswordField
               id="password"
+              hint={passwordPolicyHint(passwordPolicy)}
               label="Admin Password *"
               autoComplete="new-password"
               value={values.password}

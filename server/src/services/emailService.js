@@ -32,31 +32,55 @@ function getLocalAddress() {
 }
 
 /**
- * Creates and returns a configured Nodemailer transporter for Gmail SMTP on port 587 with STARTTLS.
+ * Creates a Nodemailer transporter. `smtp` carries the non-secret settings
+ * ({ host, port, user, requireTls }); each falls back to env, then a built-in
+ * default. The password only ever comes from the environment.
  */
-function createTransporter() {
-  const user = process.env.MAIL_USER || process.env.SMTP_USER;
+function createTransporter(smtp = {}, transportFactory) {
+  const user = smtp.user || process.env.MAIL_USER || process.env.SMTP_USER;
   const pass = process.env.MAIL_PASSWORD || process.env.SMTP_PASS;
 
   if (!user || !pass) {
     throw new Error("Missing SMTP credentials: MAIL_USER and MAIL_PASSWORD must be configured.");
   }
 
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
-  const port = Number(process.env.SMTP_PORT || 587);
+  const host = smtp.host || process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = Number(smtp.port || process.env.SMTP_PORT || 587);
   const localAddress = getLocalAddress();
+  const createTransport = transportFactory || ((options) => nodemailer.createTransport(options));
 
-  return nodemailer.createTransport({
+  return createTransport({
     host,
     port,
-    secure: false, // Port 587 uses STARTTLS
-    requireTLS: true,
+    secure: port === 465, // 465 is implicit TLS; other ports use STARTTLS
+    requireTLS: smtp.requireTls !== false && port !== 465,
     auth: {
       user,
       pass,
     },
     ...(localAddress ? { localAddress } : {}),
   });
+}
+
+// Display name used in the From header and message bodies. Quotes, angle
+// brackets, backslashes and control characters are stripped so the header
+// cannot be broken out of.
+function resolveSenderName(smtp = {}) {
+  const cleaned = String(smtp.senderName || "")
+    .replace(/[\u0000-\u001f\u007f"<>\\]/g, "")
+    .trim()
+    .slice(0, 100);
+  return cleaned || process.env.APP_NAME || "SupportPilot";
+}
+
+function resolveSenderAddress(smtp = {}) {
+  return (
+    process.env.MAIL_FROM ||
+    process.env.SMTP_FROM ||
+    smtp.user ||
+    process.env.MAIL_USER ||
+    process.env.SMTP_USER
+  );
 }
 
 /**
@@ -90,22 +114,18 @@ async function verifySMTPConnection() {
  * @param {string} resetLink - Full URL for the password reset page
  * @returns {Promise<object>} Nodemailer send result
  */
-async function sendPasswordResetEmail(toEmail, resetLink) {
-  const transporter = createTransporter();
+async function sendPasswordResetEmail(toEmail, resetLink, smtp = {}) {
+  const transporter = createTransporter(smtp);
 
-  const appName = process.env.APP_NAME || "SupportPilot";
-  const senderEmail =
-    process.env.MAIL_FROM ||
-    process.env.SMTP_FROM ||
-    process.env.MAIL_USER ||
-    process.env.SMTP_USER;
+  const appName = resolveSenderName(smtp);
+  const senderEmail = resolveSenderAddress(smtp);
 
   const mailOptions = {
     from: `"${appName}" <${senderEmail}>`,
     to: toEmail,
     subject: `Reset Your ${appName} Password`,
     text: getPlainTextEmail(resetLink, appName),
-    html: getHtmlEmail(resetLink, appName),
+    html: getHtmlEmail(resetLink, escapeHtml(appName)),
   };
 
   try {
@@ -235,18 +255,15 @@ function escapeHtml(value) {
  * @param {string} toEmail - Agent email address
  * @param {string} inviteLink - Full URL of the set-password page
  * @param {{companyName?: string, inviterName?: string}} details
+ * @param {object} [smtp] - Non-secret SMTP settings from the platform settings
  */
-async function sendAgentInviteEmail(toEmail, inviteLink, details = {}) {
-  const transporter = createTransporter();
+async function sendAgentInviteEmail(toEmail, inviteLink, details = {}, smtp = {}) {
+  const transporter = createTransporter(smtp);
 
-  const appName = process.env.APP_NAME || "SupportPilot";
+  const appName = resolveSenderName(smtp);
   const companyName = details.companyName || "your company";
   const inviterName = details.inviterName || "A company administrator";
-  const senderEmail =
-    process.env.MAIL_FROM ||
-    process.env.SMTP_FROM ||
-    process.env.MAIL_USER ||
-    process.env.SMTP_USER;
+  const senderEmail = resolveSenderAddress(smtp);
 
   const text = `
 ${appName} - You're invited
@@ -305,8 +322,38 @@ If you were not expecting this invitation, you can safely ignore this email.
   }
 }
 
+/**
+ * Generic send used by diagnostics. `smtp` is the non-secret settings object.
+ */
+async function sendMail({ to, subject, text, html, smtp = {} }) {
+  const transporter = createTransporter(smtp);
+  const senderName = resolveSenderName(smtp);
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"${senderName}" <${resolveSenderAddress(smtp)}>`,
+      to,
+      subject,
+      text,
+      html,
+    });
+    if (process.env.NODE_ENV !== "test") {
+      console.log(`[EMAIL] Email sent (messageId: ${info.messageId})`);
+    }
+    return info;
+  } catch (error) {
+    console.error("[EMAIL] Failed to send email:", {
+      code: error.code || "UNKNOWN",
+      command: error.command || "UNKNOWN",
+      message: error.message,
+    });
+    throw error;
+  }
+}
+
 module.exports = {
   createTransporter,
+  sendMail,
   verifySMTPConnection,
   sendPasswordResetEmail,
   sendAgentInviteEmail,

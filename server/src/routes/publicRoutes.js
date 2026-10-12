@@ -2,7 +2,7 @@ const express = require("express");
 const asyncHandler = require("../utils/asyncHandler");
 
 // Unauthenticated endpoints. Only id and name of Active companies are exposed.
-function createPublicRouter(customerModel) {
+function createPublicRouter(customerModel, runtimeSettings) {
   const router = express.Router();
 
   router.get(
@@ -15,6 +15,17 @@ function createPublicRouter(customerModel) {
       }));
       response.set("Cache-Control", "no-store");
       return response.status(200).json({ success: true, data: { companies } });
+    }),
+  );
+
+  // Allowlisted platform state for the client (maintenance banner, sign-up
+  // links, password hints). Never errors: failures fall back to defaults.
+  router.get(
+    "/platform",
+    asyncHandler(async (_request, response) => {
+      const data = await runtimeSettings.getPublic();
+      response.set("Cache-Control", "no-store");
+      return response.status(200).json({ success: true, data });
     }),
   );
 

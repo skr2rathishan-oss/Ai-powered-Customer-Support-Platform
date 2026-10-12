@@ -1,6 +1,7 @@
 const {
   EMAIL_PATTERN,
-  PASSWORD_PATTERN,
+  isPasswordAllowed,
+  passwordPolicyMessage,
   NAME_PATTERN,
 } = require("./authValidator");
 const { parseTicketId } = require("./ticketValidator");
@@ -49,7 +50,7 @@ function parseCompanyId(raw) {
   return null;
 }
 
-function validateCustomerRegistrationPayload(body) {
+function validateCustomerRegistrationPayload(body, policy) {
   if (!isPlainObject(body)) return invalidBody();
 
   const errors = [];
@@ -91,12 +92,8 @@ function validateCustomerRegistrationPayload(body) {
 
   if (!password) {
     errors.push({ field: "password", message: "Password is required" });
-  } else if (!PASSWORD_PATTERN.test(password)) {
-    errors.push({
-      field: "password",
-      message:
-        "Password must be 8 to 128 characters and include uppercase, lowercase, number, and special character",
-    });
+  } else if (!isPasswordAllowed(password, policy)) {
+    errors.push({ field: "password", message: passwordPolicyMessage(policy) });
   }
 
   const companyId = parseCompanyId(body.companyId);

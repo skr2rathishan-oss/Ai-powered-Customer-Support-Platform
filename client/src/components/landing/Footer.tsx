@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { subscribeNewsletter } from "../../services/leads";
 import { ROUTES } from "../../router/routes";
+import { usePlatformSettings } from "../common/platformSettingsContext";
 
 export function Footer() {
+  const { allowSelfRegistration } = usePlatformSettings();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState("");
@@ -107,14 +109,16 @@ export function Footer() {
                 Pricing
               </a>
             </li>
-            <li>
-              <Link
-                className="hover:text-primary transition-colors"
-                to={ROUTES.REGISTER_COMPANY}
-              >
-                Free Trial
-              </Link>
-            </li>
+            {allowSelfRegistration && (
+              <li>
+                <Link
+                  className="hover:text-primary transition-colors"
+                  to={ROUTES.REGISTER_COMPANY}
+                >
+                  Free Trial
+                </Link>
+              </li>
+            )}
           </ul>
         </div>
 
@@ -134,14 +138,16 @@ export function Footer() {
                 FAQ
               </a>
             </li>
-            <li>
-              <Link
-                className="hover:text-primary transition-colors"
-                to={ROUTES.REGISTER_CUSTOMER}
-              >
-                Customer Sign Up
-              </Link>
-            </li>
+            {allowSelfRegistration && (
+              <li>
+                <Link
+                  className="hover:text-primary transition-colors"
+                  to={ROUTES.REGISTER_CUSTOMER}
+                >
+                  Customer Sign Up
+                </Link>
+              </li>
+            )}
             <li>
               <Link className="hover:text-primary transition-colors" to={ROUTES.LOGIN}>
                 Account Portal
@@ -161,14 +167,16 @@ export function Footer() {
                 Enterprise
               </a>
             </li>
-            <li>
-              <Link
-                className="hover:text-primary transition-colors"
-                to={ROUTES.REGISTER_COMPANY}
-              >
-                Join SupportPilot
-              </Link>
-            </li>
+            {allowSelfRegistration && (
+              <li>
+                <Link
+                  className="hover:text-primary transition-colors"
+                  to={ROUTES.REGISTER_COMPANY}
+                >
+                  Join SupportPilot
+                </Link>
+              </li>
+            )}
             <li>
               <Link className="hover:text-primary transition-colors" to={ROUTES.LOGIN}>
                 Sign In

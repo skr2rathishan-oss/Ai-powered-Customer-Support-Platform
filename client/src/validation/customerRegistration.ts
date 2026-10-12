@@ -1,3 +1,5 @@
+import type { PasswordPolicy } from "../types/auth";
+import { passwordMatchesPolicy, passwordPolicyHint } from "./passwordPolicy";
 import type {
   CustomerRegistrationErrors,
   CustomerRegistrationField,
@@ -6,13 +8,12 @@ import type {
 
 const EMAIL_PATTERN =
   /^(?!.*\.\.)[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
-const PASSWORD_PATTERN =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s])[\s\S]{8,128}$/;
 const NAME_PATTERN = /^[\p{L}\p{M}][\p{L}\p{M}' -]*$/u;
 
 export function validateCustomerRegistrationField(
   field: CustomerRegistrationField,
   values: CustomerRegistrationValues,
+  policy?: PasswordPolicy,
 ): string | undefined {
   const value = values[field];
   const trimmed = value.trim();
@@ -37,8 +38,8 @@ export function validateCustomerRegistrationField(
       return undefined;
     case "password":
       if (!value) return "Password is required.";
-      if (!PASSWORD_PATTERN.test(value)) {
-        return "Use 8–128 characters with uppercase, lowercase, number, and symbol.";
+      if (!passwordMatchesPolicy(value, policy)) {
+        return passwordPolicyHint(policy);
       }
       return undefined;
     case "confirmPassword":
@@ -49,10 +50,11 @@ export function validateCustomerRegistrationField(
 
 export function validateCustomerRegistrationForm(
   values: CustomerRegistrationValues,
+  policy?: PasswordPolicy,
 ): CustomerRegistrationErrors {
   return (Object.keys(values) as CustomerRegistrationField[]).reduce(
     (errors, field) => {
-      const message = validateCustomerRegistrationField(field, values);
+      const message = validateCustomerRegistrationField(field, values, policy);
       if (message) errors[field] = message;
       return errors;
     },

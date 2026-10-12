@@ -3,12 +3,23 @@ const { createAccessToken } = require("../utils/token");
 const { clientRedirect } = require("../utils/clientRedirect");
 
 function createAuthController(authService) {
+  // Stored cookie flags; undefined makes the cookie helpers use env config.
+  async function cookieOptions() {
+    try {
+      return authService.getCookieOptions
+        ? await authService.getCookieOptions()
+        : undefined;
+    } catch (_error) {
+      return undefined;
+    }
+  }
+
   async function signIn(request, response) {
     const { user, accessToken } = await authService.signIn(
       request.validatedBody,
     );
 
-    setAuthCookie(response, accessToken);
+    setAuthCookie(response, accessToken, await cookieOptions());
     response.set("Cache-Control", "no-store");
 
     return response.status(200).json({
@@ -23,7 +34,7 @@ function createAuthController(authService) {
       request.validatedBody,
     );
 
-    setAuthCookie(response, accessToken);
+    setAuthCookie(response, accessToken, await cookieOptions());
     response.set("Cache-Control", "no-store");
 
     return response.status(201).json({
@@ -38,7 +49,7 @@ function createAuthController(authService) {
       request.validatedBody,
     );
 
-    setAuthCookie(response, accessToken);
+    setAuthCookie(response, accessToken, await cookieOptions());
     response.set("Cache-Control", "no-store");
 
     return response.status(201).json({
@@ -48,8 +59,8 @@ function createAuthController(authService) {
     });
   }
 
-  function signOut(_request, response) {
-    clearAuthCookie(response);
+  async function signOut(_request, response) {
+    clearAuthCookie(response, await cookieOptions());
     return response.status(200).json({
       success: true,
       message: "Sign-out successful",
@@ -86,7 +97,7 @@ function createAuthController(authService) {
     "Customer",
   ]);
 
-  function googleCallback(request, response) {
+  async function googleCallback(request, response) {
     const rawUser = request.user;
     if (!rawUser) {
       return clientRedirect(response, "/login", { error: "google_no_account" });
@@ -116,11 +127,18 @@ function createAuthController(authService) {
       roleName: rawUser.roleName,
     };
 
+    if (
+      authService.isSignInBlockedByMaintenance &&
+      (await authService.isSignInBlockedByMaintenance(safeUser.roleName))
+    ) {
+      return clientRedirect(response, "/login", { error: "maintenance" });
+    }
+
     const accessToken = authService.generateToken
-      ? authService.generateToken(safeUser)
+      ? await authService.generateToken(safeUser)
       : createAccessToken(safeUser);
 
-    setAuthCookie(response, accessToken);
+    setAuthCookie(response, accessToken, await cookieOptions());
     response.set("Cache-Control", "no-store");
 
     return clientRedirect(response, "/auth/callback");

@@ -5,6 +5,7 @@ import type {
   LoginMode,
 } from "../../types/auth";
 import { PasswordField } from "./PasswordField";
+import { usePlatformSettings } from "../common/platformSettingsContext";
 import { ROUTES } from "../../router/routes";
 
 interface LoginFormProps {
@@ -32,6 +33,7 @@ export function LoginForm({
   onForgotPassword,
   onSubmit,
 }: LoginFormProps) {
+  const { allowSelfRegistration } = usePlatformSettings();
   const emailId = `${mode}-email`;
   const passwordId = `${mode}-password`;
   const emailErrorId = `${emailId}-error`;
@@ -145,7 +147,7 @@ export function LoginForm({
         )}
       </button>
 
-      {isCompany ? (
+      {!allowSelfRegistration ? null : isCompany ? (
         <div className="company-register-prompt">
           <span>New to SupportPilot?</span>
           <Link to={ROUTES.REGISTER_COMPANY}>Register now</Link>

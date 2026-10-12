@@ -23,11 +23,16 @@ const { createCustomerService } = require("./services/customerService");
 const { createAgentPortalRouter } = require("./routes/agentPortalRoutes");
 const { createAgentPortalService } = require("./services/agentPortalService");
 const { createPublicRouter } = require("./routes/publicRoutes");
+const { resolveRuntimeSettings } = require("./services/runtimeSettings");
+const { createMaintenanceMiddleware } = require("./middleware/maintenanceMode");
 const defaultCustomerModel = require("./models/customerModel");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 
 function createApp(dependencies = {}) {
   const app = express();
+  const runtimeSettings = resolveRuntimeSettings(dependencies);
+  dependencies = { ...dependencies, runtimeSettings };
+  app.locals.runtimeSettings = runtimeSettings;
   const authService = dependencies.authService || createAuthService(dependencies);
   const adminService = dependencies.adminService || createAdminService(dependencies);
   const companyService =
@@ -78,6 +83,8 @@ function createApp(dependencies = {}) {
     response.status(200).json({ status: "ok" });
   });
 
+  app.use(createMaintenanceMiddleware(runtimeSettings));
+
   const authRouter = createAuthRouter(authService, {
     passport,
     isGoogleConfigured: dependencies.isGoogleConfigured,
@@ -98,7 +105,10 @@ function createApp(dependencies = {}) {
   app.use("/api/customer", createCustomerRouter(customerService));
   app.use(
     "/api/public",
-    createPublicRouter(dependencies.customerModel || defaultCustomerModel),
+    createPublicRouter(
+      dependencies.customerModel || defaultCustomerModel,
+      runtimeSettings,
+    ),
   );
   app.use(notFoundHandler);
   app.use(errorHandler);

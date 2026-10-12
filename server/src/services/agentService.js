@@ -4,6 +4,7 @@ const defaultCompanyPortalModel = require("../models/companyPortalModel");
 const defaultUserModel = require("../models/userModel");
 const defaultTokenModel = require("../models/tokenModel");
 const AppError = require("../utils/AppError");
+const { createStaticRuntimeSettings } = require("./runtimeSettings");
 const { createCompanyContextResolver } = require("./companyContext");
 const { sendAgentInviteEmail: defaultSendAgentInviteEmail } = require("./emailService");
 const {
@@ -54,6 +55,8 @@ function createAgentService(dependencies = {}) {
   const tokens = dependencies.tokenModel || defaultTokenModel;
   const sendInvite =
     dependencies.sendAgentInviteEmail || defaultSendAgentInviteEmail;
+  const runtimeSettings =
+    dependencies.runtimeSettings || createStaticRuntimeSettings();
   const generateToken = dependencies.generateToken || defaultGenerateToken;
   const now = dependencies.now || (() => Date.now());
   const { requireActiveCompanyAdmin } = createCompanyContextResolver(portal);
@@ -72,10 +75,15 @@ function createAgentService(dependencies = {}) {
 
       const origin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
       const link = `${origin}/reset-password?token=${rawToken}`;
-      await sendInvite(agent.email, link, {
-        companyName: admin.companyName,
-        inviterName: [admin.firstName, admin.lastName].filter(Boolean).join(" "),
-      });
+      await sendInvite(
+        agent.email,
+        link,
+        {
+          companyName: admin.companyName,
+          inviterName: [admin.firstName, admin.lastName].filter(Boolean).join(" "),
+        },
+        await runtimeSettings.getEmail(),
+      );
       return true;
     } catch (error) {
       console.error("[AGENTS] Invite email could not be delivered:", {

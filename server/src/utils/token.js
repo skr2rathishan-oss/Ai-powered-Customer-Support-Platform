@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { getAuthConfig } = require("../config/auth");
 
-function createAccessToken(user) {
+function createAccessToken(user, options = {}) {
   const config = getAuthConfig();
   const subjectId =
     user.accountType === "company" ? user.companyId : user.userId;
@@ -23,7 +23,7 @@ function createAccessToken(user) {
     },
     config.jwtSecret,
     {
-      expiresIn: config.jwtExpiresIn,
+      expiresIn: options.expiresIn || config.jwtExpiresIn,
       issuer: "supportpilot-api",
       audience: "supportpilot-client",
     },

@@ -17,6 +17,10 @@ const express = require("express");
 const { setAuthCookie } = require("../src/utils/authCookie");
 const { createAccessToken } = require("../src/utils/token");
 const { createApp } = require("../src/app");
+const {
+  createRuntimeSettings,
+  defaultLoader,
+} = require("../src/services/runtimeSettings");
 const AppError = require("../src/utils/AppError");
 
 const PLATFORM_ADMIN_PASSWORD = "Admin@SupportPilot2026!";
@@ -858,7 +862,14 @@ async function buildMockApp() {
     }),
   };
 
+  // Short cache so e2e runs see admin setting changes right away
+  const runtimeSettings = createRuntimeSettings({
+    loader: defaultLoader(adminModel),
+    ttlMs: Number(process.env.MOCK_SETTINGS_TTL_MS || 500),
+  });
+
   const realApp = createApp({
+    runtimeSettings,
     isGoogleConfigured: () => process.env.MOCK_GOOGLE !== "false",
     userModel,
     companyModel,

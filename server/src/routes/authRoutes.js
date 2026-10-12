@@ -77,7 +77,7 @@ function createAuthRouter(authService, dependencies = {}) {
     validateCustomerRegistrationRequest,
     asyncHandler(controller.registerCustomer),
   );
-  router.post("/sign-out", controller.signOut);
+  router.post("/sign-out", asyncHandler(controller.signOut));
   router.get("/me", authenticate, controller.me);
 
   // Password Reset endpoints
@@ -157,7 +157,7 @@ function createAuthRouter(authService, dependencies = {}) {
         },
       )(req, res, next);
     },
-    controller.googleCallback,
+    asyncHandler(controller.googleCallback),
   );
 
   return router;

@@ -1,11 +1,13 @@
 import { Link } from "react-router";
 import { ROUTES } from "../../router/routes";
+import { usePlatformSettings } from "../common/platformSettingsContext";
 
 interface PricingSectionProps {
   onContactSales?: () => void;
 }
 
 export function PricingSection({ onContactSales }: PricingSectionProps) {
+  const { allowSelfRegistration } = usePlatformSettings();
   return (
     <section className="py-28 bg-surface-container-low" id="pricing">
       <div className="max-w-6xl mx-auto px-6">
@@ -65,12 +67,14 @@ export function PricingSection({ onContactSales }: PricingSectionProps) {
                 </li>
               </ul>
             </div>
-            <Link
-              to={ROUTES.REGISTER_COMPANY}
-              className="magnetic-btn w-full text-center py-3.5 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary/5 transition-all text-sm block"
-            >
-              Start Free Trial
-            </Link>
+            {allowSelfRegistration && (
+              <Link
+                to={ROUTES.REGISTER_COMPANY}
+                className="magnetic-btn w-full text-center py-3.5 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary/5 transition-all text-sm block"
+              >
+                Start Free Trial
+              </Link>
+            )}
           </div>
 
           {/* 2. Professional Plan (Spotlight / Featured) */}
@@ -125,12 +129,14 @@ export function PricingSection({ onContactSales }: PricingSectionProps) {
                 </li>
               </ul>
             </div>
-            <Link
-              to={ROUTES.REGISTER_COMPANY}
-              className="magnetic-btn w-full text-center py-3.5 rounded-xl bg-primary hover:bg-primary-container text-white font-bold shadow-lg shadow-primary/30 transition-all text-sm block"
-            >
-              Get Started Now
-            </Link>
+            {allowSelfRegistration && (
+              <Link
+                to={ROUTES.REGISTER_COMPANY}
+                className="magnetic-btn w-full text-center py-3.5 rounded-xl bg-primary hover:bg-primary-container text-white font-bold shadow-lg shadow-primary/30 transition-all text-sm block"
+              >
+                Get Started Now
+              </Link>
+            )}
           </div>
 
           {/* 3. Enterprise Plan */}

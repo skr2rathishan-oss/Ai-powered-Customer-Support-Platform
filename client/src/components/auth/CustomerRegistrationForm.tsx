@@ -18,6 +18,8 @@ import {
   validateCustomerRegistrationForm,
 } from "../../validation/customerRegistration";
 import { PasswordField } from "./PasswordField";
+import { usePlatformSettings } from "../common/platformSettingsContext";
+import { passwordPolicyHint } from "../../validation/passwordPolicy";
 import { RegistrationField } from "./RegistrationField";
 
 interface CustomerRegistrationFormProps {
@@ -41,6 +43,7 @@ type CompaniesState =
 export function CustomerRegistrationForm({
   onAuthenticated,
 }: CustomerRegistrationFormProps) {
+  const { passwordPolicy } = usePlatformSettings();
   const [values, setValues] = useState<CustomerRegistrationValues>(initialValues);
   const [errors, setErrors] = useState<CustomerRegistrationErrors>({});
   const [submitError, setSubmitError] = useState("");
@@ -81,7 +84,7 @@ export function CustomerRegistrationForm({
   function handleBlur(field: CustomerRegistrationField) {
     setErrors((current) => ({
       ...current,
-      [field]: validateCustomerRegistrationField(field, values),
+      [field]: validateCustomerRegistrationField(field, values, passwordPolicy),
     }));
   }
 
@@ -89,7 +92,7 @@ export function CustomerRegistrationForm({
     event.preventDefault();
     if (loading) return;
 
-    const nextErrors = validateCustomerRegistrationForm(values);
+    const nextErrors = validateCustomerRegistrationForm(values, passwordPolicy);
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
 
@@ -216,6 +219,7 @@ export function CustomerRegistrationForm({
           <div>
             <PasswordField
               id="customer-password"
+              hint={passwordPolicyHint(passwordPolicy)}
               label="Password *"
               autoComplete="new-password"
               value={values.password}

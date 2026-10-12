@@ -138,3 +138,16 @@ test("parseCustomerTicketId accepts positive integers only", () => {
     assert.equal(parseCustomerTicketId(bad), null, String(bad));
   }
 });
+
+test("registration password follows an optional policy and defaults to the strict one", () => {
+  const withPassword = (password, policy) =>
+    validateCustomerRegistrationPayload({ ...validRegistration, password }, policy);
+
+  assert.deepEqual(fields(withPassword("Abcdefg1")), ["password"]);
+  assert.deepEqual(fields(withPassword("Abcdefg1", { minPasswordLength: 8, requireSpecialChar: true })), ["password"]);
+  assert.deepEqual(withPassword("Abcdefg1", { minPasswordLength: 8, requireSpecialChar: false }).errors, []);
+  assert.deepEqual(withPassword("Abcde1", { minPasswordLength: 6, requireSpecialChar: false }).errors, []);
+
+  const tooShort = withPassword("Abcdefg1!x", { minPasswordLength: 12, requireSpecialChar: true });
+  assert.match(tooShort.errors[0].message, /12 to 128 characters/);
+});

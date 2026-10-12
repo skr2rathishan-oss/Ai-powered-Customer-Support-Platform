@@ -358,6 +358,13 @@ textarea:focus-visible {
   opacity: 0.74;
 }
 
+.field-hint {
+  margin: -2px 0 0;
+  color: #777484;
+  font-size: 12px;
+  line-height: 17px;
+}
+
 .field-error {
   margin: -2px 0 0;
   color: var(--error);
