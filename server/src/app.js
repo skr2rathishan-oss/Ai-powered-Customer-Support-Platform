@@ -20,6 +20,8 @@ const { createAiSettingsRouter } = require("./routes/aiSettingsRoutes");
 const { createAiSettingsService } = require("./services/aiSettingsService");
 const { createCustomerRouter } = require("./routes/customerRoutes");
 const { createCustomerService } = require("./services/customerService");
+const { createAgentPortalRouter } = require("./routes/agentPortalRoutes");
+const { createAgentPortalService } = require("./services/agentPortalService");
 const { createPublicRouter } = require("./routes/publicRoutes");
 const defaultCustomerModel = require("./models/customerModel");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
@@ -39,6 +41,8 @@ function createApp(dependencies = {}) {
     dependencies.aiSettingsService || createAiSettingsService(dependencies);
   const customerService =
     dependencies.customerService || createCustomerService(dependencies);
+  const agentPortalService =
+    dependencies.agentPortalService || createAgentPortalService(dependencies);
   const passport = dependencies.passport || configurePassport(dependencies);
 
   app.disable("x-powered-by");
@@ -87,6 +91,7 @@ function createApp(dependencies = {}) {
     createAiSettingsRouter(aiSettingsService),
   );
   app.use("/api/company", createCompanyRouter(companyService));
+  app.use("/api/agent", createAgentPortalRouter(agentPortalService));
   app.use("/api/customer", createCustomerRouter(customerService));
   app.use(
     "/api/public",

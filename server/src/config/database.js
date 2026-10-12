@@ -64,6 +64,7 @@ async function initMySQLSchema() {
   const pool = getMySQLPool();
   await ensurePlatformSettingsTable(pool);
   await ensureTicketsTable(pool);
+  await ensureTicketRepliesTable(pool);
   await ensureFaqsTable(pool);
   await ensureCompanyAiSettingsTable(pool);
   await ensureCustomerSupport(pool);
@@ -159,6 +160,31 @@ async function ensureTicketsTable(pool) {
   } catch (error) {
     if (process.env.NODE_ENV !== "test") {
       console.warn("Tickets schema notice:", error.message);
+    }
+  }
+}
+
+async function ensureTicketRepliesTable(pool) {
+  try {
+    // No foreign keys, same reasoning as tickets. author_role/author_name are
+    // snapshots so history survives role or account changes.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ticket_replies (
+        reply_id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        ticket_id INT NOT NULL,
+        author_id INT NULL,
+        author_role VARCHAR(20) NOT NULL,
+        author_name VARCHAR(150) NULL,
+        is_internal TINYINT(1) NOT NULL DEFAULT 0,
+        body TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ticket_replies_ticket (company_id, ticket_id, created_at, reply_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Ticket replies schema notice:", error.message);
     }
   }
 }

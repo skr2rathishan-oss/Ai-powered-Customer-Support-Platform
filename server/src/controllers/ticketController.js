@@ -36,7 +36,24 @@ function createTicketController(ticketService) {
     return send(response, 200, data);
   }
 
-  return { list, get, create, update, listAgents };
+  async function listReplies(request, response) {
+    const data = await ticketService.listReplies(
+      request.auth,
+      request.params.ticketId,
+    );
+    return send(response, 200, data);
+  }
+
+  async function createReply(request, response) {
+    const data = await ticketService.createReply(
+      request.auth,
+      request.params.ticketId,
+      request.body,
+    );
+    return send(response, 201, data);
+  }
+
+  return { listReplies, createReply, list, get, create, update, listAgents };
 }
 
 module.exports = { createTicketController };

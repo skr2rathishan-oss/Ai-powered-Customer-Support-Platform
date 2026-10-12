@@ -2,7 +2,9 @@ import type {
   CreateCustomerTicketInput,
   CustomerMe,
   CustomerRegistrationValues,
+  CustomerReplyResult,
   CustomerTicket,
+  CustomerTicketDetail,
   CustomerTicketFilters,
   CustomerTicketListResult,
   PublicCompany,
@@ -95,12 +97,23 @@ export async function listCustomerTickets(
 
 export async function getCustomerTicket(
   ticketId: number | string,
-): Promise<CustomerTicket> {
-  const response = await apiRequest<Envelope<{ ticket: CustomerTicket }>>(
+): Promise<CustomerTicketDetail> {
+  const response = await apiRequest<Envelope<CustomerTicketDetail>>(
     `${TICKETS}/${encodeURIComponent(String(ticketId))}`,
     { cache: "no-store" },
   );
-  return response.data.ticket;
+  return response.data;
+}
+
+export async function postCustomerReply(
+  ticketId: number | string,
+  body: string,
+): Promise<CustomerReplyResult> {
+  const response = await apiRequest<Envelope<CustomerReplyResult>>(
+    `${TICKETS}/${encodeURIComponent(String(ticketId))}/replies`,
+    { data: { body }, method: "POST", cache: "no-store" },
+  );
+  return response.data;
 }
 
 export async function createCustomerTicket(

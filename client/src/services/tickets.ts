@@ -1,3 +1,4 @@
+import type { TicketReply } from "../types/agentPortal";
 import type {
   AssignableAgent,
   CreateTicketInput,
@@ -57,6 +58,27 @@ export async function updateTicket(
     { data: changes, method: "PATCH" },
   );
   return response.data.ticket;
+}
+
+export async function listTicketReplies(
+  ticketId: number | string,
+): Promise<TicketReply[]> {
+  const response = await apiRequest<Envelope<{ replies: TicketReply[] }>>(
+    `${BASE}/${encodeURIComponent(String(ticketId))}/replies`,
+    { cache: "no-store" },
+  );
+  return response.data.replies;
+}
+
+export async function postTicketReply(
+  ticketId: number | string,
+  input: { body: string; isInternal: boolean },
+): Promise<TicketReply> {
+  const response = await apiRequest<Envelope<{ reply: TicketReply }>>(
+    `${BASE}/${encodeURIComponent(String(ticketId))}/replies`,
+    { data: input, method: "POST", cache: "no-store" },
+  );
+  return response.data.reply;
 }
 
 export async function listAssignableAgents(): Promise<AssignableAgent[]> {

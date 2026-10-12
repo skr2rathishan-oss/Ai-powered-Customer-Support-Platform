@@ -18,6 +18,10 @@ import { CustomerTicketsPage } from "../pages/customer/CustomerTicketsPage";
 import { CustomerNewTicketPage } from "../pages/customer/CustomerNewTicketPage";
 import { CustomerTicketDetailPage } from "../pages/customer/CustomerTicketDetailPage";
 import { CustomerHelpPage } from "../pages/customer/CustomerHelpPage";
+import { AgentRouteGuard } from "../components/agent/AgentRouteGuard";
+import { AgentLayout } from "../components/agent/AgentLayout";
+import { AgentQueuePage } from "../pages/agent/AgentQueuePage";
+import { AgentTicketDetailPage } from "../pages/agent/AgentTicketDetailPage";
 import { ResetPasswordPage } from "../pages/auth/ResetPasswordPage";
 import { PlatformAdminDashboardPage } from "../pages/admin/PlatformAdminDashboardPage";
 import { PlatformCompaniesPage } from "../pages/admin/PlatformCompaniesPage";
@@ -79,6 +83,21 @@ export function AppRouter() {
             element={<CustomerTicketDetailPage />}
           />
           <Route path={ROUTES.CUSTOMER_HELP} element={<CustomerHelpPage />} />
+        </Route>
+      </Route>
+
+      {/* Agent Portal (server-verified Support Agent only) */}
+      <Route
+        path={ROUTES.AGENT_HOME}
+        element={<Navigate to={ROUTES.AGENT_TICKETS} replace />}
+      />
+      <Route element={<AgentRouteGuard />}>
+        <Route element={<AgentLayout />}>
+          <Route path={ROUTES.AGENT_TICKETS} element={<AgentQueuePage />} />
+          <Route
+            path={ROUTES.AGENT_TICKET_DETAIL}
+            element={<AgentTicketDetailPage />}
+          />
         </Route>
       </Route>
 

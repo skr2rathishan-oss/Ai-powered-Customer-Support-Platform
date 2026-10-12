@@ -1,7 +1,13 @@
 const defaultTicketModel = require("../models/ticketModel");
 const defaultCompanyPortalModel = require("../models/companyPortalModel");
+const defaultTicketReplyModel = require("../models/ticketReplyModel");
 const AppError = require("../utils/AppError");
 const { createCompanyContextResolver } = require("./companyContext");
+const { validateReplyPayload } = require("../validators/replyValidator");
+const {
+  MAX_REPLIES_PER_TICKET,
+  AUTHOR_ADMIN,
+} = require("../constants/replyConstants");
 const {
   validateCreateTicketPayload,
   validateUpdateTicketPayload,
@@ -39,8 +45,21 @@ function requireTicketId(rawId) {
   return ticketId;
 }
 
+function toStaffReply(row) {
+  return {
+    replyId: row.replyId,
+    authorRole: row.authorRole,
+    authorName: row.authorName ?? null,
+    isInternal: Boolean(row.isInternal),
+    body: row.body,
+    createdAt: row.createdAt,
+  };
+}
+
 function createTicketService(dependencies = {}) {
   const ticketModel = dependencies.ticketModel || defaultTicketModel;
+  const ticketReplyModel =
+    dependencies.ticketReplyModel || defaultTicketReplyModel;
   const portal = dependencies.companyPortalModel || defaultCompanyPortalModel;
   const { requireActiveCompanyAdmin } = createCompanyContextResolver(portal);
 
@@ -120,7 +139,56 @@ function createTicketService(dependencies = {}) {
     return { agents };
   }
 
+  async function listReplies(auth, rawId) {
+    const { companyId } = await requireActiveCompanyAdmin(auth);
+    const ticketId = requireTicketId(rawId);
+
+    const ticket = await ticketModel.findTicketById(companyId, ticketId);
+    if (!ticket) throw ticketNotFound();
+
+    const replies = await ticketReplyModel.listReplies(companyId, ticketId, {
+      includeInternal: true,
+    });
+    return { replies: replies.map(toStaffReply) };
+  }
+
+  async function createReply(auth, rawId, body) {
+    const context = await requireActiveCompanyAdmin(auth);
+    const { companyId } = context;
+    const ticketId = requireTicketId(rawId);
+
+    const { value, errors } = validateReplyPayload(body, { allowInternal: true });
+    if (errors.length > 0) throw validationError(errors);
+
+    const ticket = await ticketModel.findTicketById(companyId, ticketId);
+    if (!ticket) throw ticketNotFound();
+    const closed = () => new AppError("This ticket is closed", 409, "TICKET_CLOSED");
+    if (ticket.status === "Closed") throw closed();
+
+    const count = await ticketReplyModel.countReplies(companyId, ticketId);
+    if (count >= MAX_REPLIES_PER_TICKET) {
+      throw new AppError(
+        "This ticket has reached its reply limit",
+        409,
+        "REPLY_LIMIT_REACHED",
+      );
+    }
+
+    const reply = await ticketReplyModel.createReply(companyId, ticketId, {
+      authorId: context.userId,
+      authorRole: AUTHOR_ADMIN,
+      authorName: [context.firstName, context.lastName].filter(Boolean).join(" ").trim(),
+      isInternal: value.isInternal,
+      body: value.body,
+    });
+    if (!reply) throw closed();
+
+    return { reply: toStaffReply(reply) };
+  }
+
   return {
+    listReplies,
+    createReply,
     listTickets,
     getTicket,
     createTicket,

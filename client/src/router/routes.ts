@@ -15,6 +15,9 @@ export const ROUTES = {
   COMPANY_AGENTS: "/company/agents",
   COMPANY_FAQS: "/company/faqs",
   COMPANY_AI_SETTINGS: "/company/ai-settings",
+  AGENT_HOME: "/agent",
+  AGENT_TICKETS: "/agent/tickets",
+  AGENT_TICKET_DETAIL: "/agent/tickets/:ticketId",
   ADMIN_DASHBOARD: "/admin/dashboard",
   ADMIN_COMPANIES: "/admin/companies",
   ADMIN_SETTINGS: "/admin/settings",
@@ -28,3 +31,6 @@ export const companyTicketPath = (id: number | string) =>
 
 export const customerTicketPath = (id: number | string) =>
   `/support/tickets/${id}`;
+
+export const agentTicketPath = (id: number | string) =>
+  `/agent/tickets/${id}`;

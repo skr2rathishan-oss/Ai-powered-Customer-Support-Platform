@@ -26,12 +26,21 @@ function createCustomerController(customerService) {
     return send(response, 200, data);
   }
 
+  async function createReply(request, response) {
+    const data = await customerService.createReply(
+      request.auth,
+      request.params.ticketId,
+      request.body,
+    );
+    return send(response, 201, data);
+  }
+
   async function createTicket(request, response) {
     const data = await customerService.createTicket(request.auth, request.body);
     return send(response, 201, data);
   }
 
-  return { me, listFaqs, listTickets, getTicket, createTicket };
+  return { me, listFaqs, listTickets, getTicket, createReply, createTicket };
 }
 
 module.exports = { createCustomerController };

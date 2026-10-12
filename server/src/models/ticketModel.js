@@ -145,8 +145,13 @@ async function updateTicket(companyId, ticketId, changes = {}, options) {
   if (assignments.length > 0) {
     await poolFrom(options).execute(
       `UPDATE tickets SET ${assignments.join(", ")}
-       WHERE company_id = ? AND ticket_id = ?`,
-      [...params, companyId, ticketId],
+       WHERE company_id = ? AND ticket_id = ?${changes.onlyIfStatus ? " AND status = ?" : ""}`,
+      [
+        ...params,
+        companyId,
+        ticketId,
+        ...(changes.onlyIfStatus ? [changes.onlyIfStatus] : []),
+      ],
     );
   }
 
@@ -245,7 +250,111 @@ async function countOpenCustomerTickets(companyId, customerId, options) {
   return Number(rows[0]?.total || 0);
 }
 
+// Agent-scoped reads/writes: company_id and assigned_agent_id are the first two
+// parameters and part of EVERY WHERE clause.
+const AGENT_SORT_ORDER = {
+  newest: "t.created_at DESC, t.ticket_id DESC",
+  oldest: "t.created_at ASC, t.ticket_id ASC",
+  priority:
+    "FIELD(t.priority, 'Urgent', 'High', 'Medium', 'Low'), t.created_at DESC, t.ticket_id DESC",
+};
+
+async function listAgentTickets(companyId, agentId, filters = {}, options) {
+  const pool = poolFrom(options);
+  const page = Number(filters.page) || 1;
+  const limit = Number(filters.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const conditions = ["t.company_id = ?", "t.assigned_agent_id = ?"];
+  const params = [companyId, agentId];
+
+  if (filters.status) {
+    conditions.push("t.status = ?");
+    params.push(filters.status);
+  }
+  if (filters.search) {
+    const pattern = `%${escapeLike(filters.search)}%`;
+    conditions.push(
+      "(t.subject LIKE ? ESCAPE '\\\\' OR t.requester_name LIKE ? ESCAPE '\\\\' OR t.requester_email LIKE ? ESCAPE '\\\\')",
+    );
+    params.push(pattern, pattern, pattern);
+  }
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
+  const orderBy = AGENT_SORT_ORDER[filters.sort] || AGENT_SORT_ORDER.newest;
+
+  const [countRows] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM tickets AS t ${whereClause}`,
+    params,
+  );
+
+  const [tickets] = await pool.query(
+    `${TICKET_SELECT}
+     ${whereClause}
+     ORDER BY ${orderBy}
+     LIMIT ? OFFSET ?`,
+    [...params, limit, offset],
+  );
+
+  return { tickets, total: Number(countRows[0]?.total || 0), page, limit };
+}
+
+async function countAgentTicketsByStatus(companyId, agentId, options) {
+  const [rows] = await poolFrom(options).execute(
+    `SELECT t.status AS status, COUNT(*) AS total FROM tickets AS t
+     WHERE t.company_id = ? AND t.assigned_agent_id = ?
+     GROUP BY t.status`,
+    [companyId, agentId],
+  );
+
+  const counts = { open: 0, inProgress: 0, resolved: 0, closed: 0, total: 0 };
+  const keys = {
+    Open: "open",
+    "In Progress": "inProgress",
+    Resolved: "resolved",
+    Closed: "closed",
+  };
+  for (const row of rows) {
+    const total = Number(row.total || 0);
+    if (keys[row.status]) counts[keys[row.status]] = total;
+    counts.total += total;
+  }
+  return counts;
+}
+
+async function findAgentTicketById(companyId, agentId, ticketId, options) {
+  const [rows] = await poolFrom(options).execute(
+    `${TICKET_SELECT}
+     WHERE t.company_id = ? AND t.assigned_agent_id = ? AND t.ticket_id = ?
+     LIMIT 1`,
+    [companyId, agentId, ticketId],
+  );
+
+  return rows[0] || null;
+}
+
+// Returns null when nothing matched (not assigned, other company or Closed)
+async function updateAgentTicketStatus(companyId, agentId, ticketId, status, options) {
+  const [result] = await poolFrom(options).execute(
+    `UPDATE tickets SET status = ?, ${
+      isClosedStatus(status)
+        ? "resolved_at = COALESCE(resolved_at, NOW())"
+        : "resolved_at = NULL"
+    }
+     WHERE company_id = ? AND assigned_agent_id = ? AND ticket_id = ?
+       AND status <> 'Closed'`,
+    [status, companyId, agentId, ticketId],
+  );
+
+  if (!result?.affectedRows) return null;
+  return findAgentTicketById(companyId, agentId, ticketId, options);
+}
+
 module.exports = {
+  listAgentTickets,
+  countAgentTicketsByStatus,
+  findAgentTicketById,
+  updateAgentTicketStatus,
   listCustomerTickets,
   findCustomerTicketById,
   countOpenCustomerTickets,

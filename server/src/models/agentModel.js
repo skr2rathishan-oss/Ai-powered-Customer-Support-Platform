@@ -137,10 +137,36 @@ async function unassignOpenTickets(companyId, agentId, options) {
   return result?.affectedRows || 0;
 }
 
+// Same shape as customerModel.findCustomerContext: the role and statuses are
+// returned (not filtered) so the resolver can report why access is denied.
+async function findAgentContext(userId, options) {
+  const [rows] = await poolFrom(options).execute(
+    `SELECT
+       u.user_id AS userId,
+       u.first_name AS firstName,
+       u.last_name AS lastName,
+       u.email AS email,
+       u.account_status AS userStatus,
+       r.role_name AS roleName,
+       c.company_id AS companyId,
+       c.company_name AS companyName,
+       c.status AS companyStatus
+     FROM users AS u
+     INNER JOIN roles AS r ON r.role_id = u.role_id
+     INNER JOIN companies AS c ON c.company_id = u.company_id
+     WHERE u.user_id = ?
+     LIMIT 1`,
+    [userId],
+  );
+
+  return rows[0] || null;
+}
+
 module.exports = {
   listAgents,
   findAgent,
   createAgent,
   setAgentStatus,
   unassignOpenTickets,
+  findAgentContext,
 };

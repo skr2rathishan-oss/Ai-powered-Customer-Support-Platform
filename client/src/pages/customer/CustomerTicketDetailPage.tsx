@@ -6,11 +6,13 @@ import { formatTicketDate } from "../../components/company/tickets/ticketFormat"
 import { useCustomerAuthError } from "../../components/customer/useCustomerAuthError";
 import { ROUTES } from "../../router/routes";
 import { ApiError } from "../../services/apiClient";
-import { getCustomerTicket } from "../../services/customer";
-import type { CustomerTicket } from "../../types/customer";
+import { ReplyForm } from "../../components/tickets/ReplyForm";
+import { ReplyThread } from "../../components/tickets/ReplyThread";
+import { getCustomerTicket, postCustomerReply } from "../../services/customer";
+import type { CustomerReply, CustomerTicket } from "../../types/customer";
 
 type LoadState =
-  | { id: string; status: "ready"; ticket: CustomerTicket }
+  | { id: string; status: "ready"; ticket: CustomerTicket; replies: CustomerReply[] }
   | { id: string; status: "not-found" }
   | { id: string; status: "error"; message: string };
 
@@ -56,8 +58,8 @@ export function CustomerTicketDetailPage() {
     let cancelled = false;
 
     getCustomerTicket(ticketId)
-      .then((ticket) => {
-        if (!cancelled) setState({ id: requestId, status: "ready", ticket });
+      .then(({ ticket, replies }) => {
+        if (!cancelled) setState({ id: requestId, status: "ready", ticket, replies });
       })
       .catch((error: unknown) => {
         if (cancelled || handleAuthError(error)) return;
@@ -114,7 +116,25 @@ export function CustomerTicketDetailPage() {
     );
   }
 
-  const { ticket } = state;
+  const { ticket, replies } = state;
+
+  async function sendReply(body: string) {
+    try {
+      const result = await postCustomerReply(ticket.ticketId, body);
+      setState((current) =>
+        current && current.status === "ready" && current.id === requestId
+          ? {
+              ...current,
+              ticket: result.ticket,
+              replies: [...current.replies, result.reply],
+            }
+          : current,
+      );
+    } catch (error) {
+      if (handleAuthError(error)) return;
+      throw error;
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -179,10 +199,35 @@ export function CustomerTicketDetailPage() {
           </p>
         </div>
 
-        <p className="rounded-xl bg-[#f6f2ff] text-[#474555] text-xs px-4 py-3">
-          Replies are coming soon. For now, our team will update the status of
-          this ticket as they work on it.
-        </p>
+        <div className="space-y-4 pt-2">
+          <h2 className="text-lg font-bold text-[#1c1b23]">Conversation</h2>
+          <ReplyThread
+            replies={replies}
+            emptyText="No replies yet. Our team will respond here."
+          />
+          {ticket.status === "Closed" ? (
+            <p className="rounded-xl bg-slate-50 border border-[#e2e4e9] text-sm text-[#474555] px-4 py-3">
+              This ticket is closed. Open a new ticket if you still need help.{" "}
+              <Link
+                to={ROUTES.CUSTOMER_NEW_TICKET}
+                className="font-semibold text-[#6D5EF5] hover:underline"
+              >
+                Open a new ticket
+              </Link>
+            </p>
+          ) : (
+            <ReplyForm
+              allowInternal={false}
+              idPrefix="customer-reply"
+              onSubmit={sendReply}
+              hint={
+                ticket.status === "Resolved"
+                  ? "This ticket is resolved. Sending a reply will reopen it."
+                  : null
+              }
+            />
+          )}
+        </div>
       </section>
     </div>
   );

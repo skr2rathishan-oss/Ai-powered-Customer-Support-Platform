@@ -15,6 +15,8 @@ function createTicketRouter(ticketService) {
   router.get("/", asyncHandler(controller.list));
   router.post("/", asyncHandler(controller.create));
   router.get("/:ticketId", asyncHandler(controller.get));
+  router.get("/:ticketId/replies", asyncHandler(controller.listReplies));
+  router.post("/:ticketId/replies", asyncHandler(controller.createReply));
   router.patch("/:ticketId", asyncHandler(controller.update));
 
   return router;

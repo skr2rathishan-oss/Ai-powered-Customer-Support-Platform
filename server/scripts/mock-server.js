@@ -245,6 +245,7 @@ async function buildMockApp() {
         (t) => t.companyId === Number(companyId) && t.ticketId === Number(ticketId),
       );
       if (!ticket) return null;
+      if (changes.onlyIfStatus && ticket.status !== changes.onlyIfStatus) return ticket;
       if (changes.status !== undefined) {
         ticket.status = changes.status;
         ticket.resolvedAt = isClosed(changes.status)
@@ -276,6 +277,139 @@ async function buildMockApp() {
           email: u.email,
           onlineStatus: u.onlineStatus,
         })),
+  };
+
+  // Agent-scoped ticket reads/writes: same scoping and Closed guard as the SQL
+  const ownAgentTicket = (companyId, agentId, ticketId) =>
+    tickets.find(
+      (t) =>
+        t.companyId === Number(companyId) &&
+        t.assignedAgentId === Number(agentId) &&
+        t.ticketId === Number(ticketId),
+    );
+  const PRIORITY_RANK = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
+  ticketModel.listAgentTickets = async (companyId, agentId, filters = {}) => {
+    const term = filters.search ? filters.search.toLowerCase() : null;
+    const byNewest = (a, b) => b.createdAt.localeCompare(a.createdAt) || b.ticketId - a.ticketId;
+    const sorters = {
+      newest: byNewest,
+      oldest: (a, b) => -byNewest(a, b),
+      priority: (a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || byNewest(a, b),
+    };
+    const matches = tickets
+      .filter((t) => t.companyId === Number(companyId) && t.assignedAgentId === Number(agentId))
+      .filter((t) => !filters.status || t.status === filters.status)
+      .filter(
+        (t) =>
+          !term ||
+          [t.subject, t.requesterName, t.requesterEmail].some(
+            (field) => field && field.toLowerCase().includes(term),
+          ),
+      )
+      .sort(sorters[filters.sort] || byNewest);
+    const page = filters.page || 1;
+    const limit = filters.limit || 20;
+    return {
+      tickets: matches.slice((page - 1) * limit, page * limit).map(presentTicket),
+      total: matches.length,
+      page,
+      limit,
+    };
+  };
+  ticketModel.countAgentTicketsByStatus = async (companyId, agentId) => {
+    const own = tickets.filter(
+      (t) => t.companyId === Number(companyId) && t.assignedAgentId === Number(agentId),
+    );
+    const count = (status) => own.filter((t) => t.status === status).length;
+    return {
+      open: count("Open"),
+      inProgress: count("In Progress"),
+      resolved: count("Resolved"),
+      closed: count("Closed"),
+      total: own.length,
+    };
+  };
+  ticketModel.findAgentTicketById = async (companyId, agentId, ticketId) => {
+    const ticket = ownAgentTicket(companyId, agentId, ticketId);
+    return ticket ? presentTicket(ticket) : null;
+  };
+  ticketModel.updateAgentTicketStatus = async (companyId, agentId, ticketId, status) => {
+    const ticket = ownAgentTicket(companyId, agentId, ticketId);
+    if (!ticket || ticket.status === "Closed") return null;
+    ticket.status = status;
+    ticket.resolvedAt = isClosed(status) ? ticket.resolvedAt || new Date().toISOString() : null;
+    ticket.updatedAt = new Date().toISOString();
+    return presentTicket(ticket);
+  };
+
+  // Replies. Seeded through the array only; existing tickets are untouched.
+  const hoursAgo = (hours) => new Date(Date.now() - hours * 3600000).toISOString();
+  let nextReplyId = 1;
+  const replies = [
+    { ticketId: 1, authorId: 4, authorRole: "Agent", authorName: "Sam Agent", isInternal: false, body: "Hi Priya, we are checking why the reset email is not arriving.", createdAt: hoursAgo(20) },
+    { ticketId: 1, authorId: 4, authorRole: "Agent", authorName: "Sam Agent", isInternal: true, body: "Checked logs, SMTP bounce", createdAt: hoursAgo(19) },
+    { ticketId: 2, authorId: 4, authorRole: "Agent", authorName: "Sam Agent", isInternal: false, body: "We are reviewing the March invoice.", createdAt: hoursAgo(40) },
+    { ticketId: 2, authorId: null, authorRole: "Customer", authorName: "Tom Becker", isInternal: false, body: "Thanks, any update on the double charge?", createdAt: hoursAgo(10) },
+    { ticketId: 13, authorId: 6, authorRole: "Agent", authorName: "Riya Patel", isInternal: false, body: "Hi Casey, which device are you using?", createdAt: hoursAgo(30) },
+    { ticketId: 13, authorId: 6, authorRole: "Agent", authorName: "Riya Patel", isInternal: true, body: "INTERNAL-ONLY-NOTE-RIYA", createdAt: hoursAgo(29) },
+    { ticketId: 14, authorId: 6, authorRole: "Agent", authorName: "Riya Patel", isInternal: false, body: "Your shipping address has been updated.", createdAt: hoursAgo(360) },
+  ].map((reply) => ({ replyId: nextReplyId++, companyId: 1, ...reply }));
+
+  const presentReply = (reply) => {
+    const { companyId: _companyId, ticketId: _ticketId, ...rest } = reply;
+    return { ...rest };
+  };
+  const ticketReplyModel = {
+    listReplies: async (companyId, ticketId, { includeInternal = false } = {}) =>
+      replies
+        .filter((r) => r.companyId === Number(companyId) && r.ticketId === Number(ticketId))
+        .filter((r) => includeInternal || !r.isInternal)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.replyId - b.replyId)
+        .slice(0, 500)
+        .map(presentReply),
+    createReply: async (companyId, ticketId, input) => {
+      const ticket = tickets.find(
+        (t) => t.companyId === Number(companyId) && t.ticketId === Number(ticketId),
+      );
+      if (!ticket || ticket.status === "Closed") return null;
+      if (
+        input.requireAssignedAgentId !== undefined &&
+        ticket.assignedAgentId !== input.requireAssignedAgentId
+      ) {
+        return null;
+      }
+      const reply = {
+        replyId: nextReplyId++,
+        companyId: Number(companyId),
+        ticketId: Number(ticketId),
+        authorId: input.authorId ?? null,
+        authorRole: input.authorRole,
+        authorName: input.authorName ?? null,
+        isInternal: Boolean(input.isInternal),
+        body: input.body,
+        createdAt: new Date().toISOString(),
+      };
+      replies.push(reply);
+      return presentReply(reply);
+    },
+    countReplies: async (companyId, ticketId) =>
+      replies.filter((r) => r.companyId === Number(companyId) && r.ticketId === Number(ticketId))
+        .length,
+    lastReplyByTickets: async (companyId, ticketIds) =>
+      ticketIds
+        .map((ticketId) => {
+          const own = replies
+            .filter(
+              (r) =>
+                r.companyId === Number(companyId) && r.ticketId === Number(ticketId) && !r.isInternal,
+            )
+            .sort((a, b) => a.replyId - b.replyId);
+          const last = own[own.length - 1];
+          return last
+            ? { ticketId, replyCount: own.length, lastReplyAt: last.createdAt, lastReplyRole: last.authorRole }
+            : null;
+        })
+        .filter(Boolean),
   };
 
   const findUser = (email) =>
@@ -476,6 +610,23 @@ async function buildMockApp() {
       }
       return count;
     },
+  };
+
+  agentModel.findAgentContext = async (userId) => {
+    const user = users.find((u) => u.userId === Number(userId));
+    const company = user && companies.find((c) => c.companyId === user.companyId);
+    if (!user || !company) return null;
+    return {
+      userId: user.userId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      userStatus: user.accountStatus,
+      roleName: user.roleName,
+      companyId: company.companyId,
+      companyName: company.companyName,
+      companyStatus: company.status,
+    };
   };
 
   // FAQs (company 1 = Acme, company 2 = Globex)
@@ -711,6 +862,7 @@ async function buildMockApp() {
     adminModel,
     companyPortalModel,
     ticketModel,
+    ticketReplyModel,
     agentModel,
     faqModel,
     aiSettingsModel,
@@ -726,6 +878,7 @@ async function listen() {
     console.log(`[mock] SupportPilot mock API listening on http://localhost:${port}`);
     console.log(`[mock] Platform Admin: admin@supportpilot.com / ${PLATFORM_ADMIN_PASSWORD}`);
     console.log(`[mock] Company Admin:  owner@acme-demo.com / ${COMPANY_ADMIN_PASSWORD}`);
+    console.log(`[mock] Support Agent: agent@acme-demo.com / ${COMPANY_ADMIN_PASSWORD} (Sam), riya@acme-demo.com / ${COMPANY_ADMIN_PASSWORD} (Riya)`);
     console.log(`[mock] Customer: casey@customer.example / ${CUSTOMER_PASSWORD}`);
   });
 }

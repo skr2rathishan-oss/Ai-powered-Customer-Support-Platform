@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { ReplyForm } from "../../components/tickets/ReplyForm";
+import { ReplyThread } from "../../components/tickets/ReplyThread";
 import { TicketPropertyEditor } from "../../components/company/tickets/TicketPropertyEditor";
 import { formatTicketDate } from "../../components/company/tickets/ticketFormat";
 import { useCompanyPortal } from "../../components/company/useCompanyPortal";
@@ -13,7 +15,10 @@ import {
   getErrorCode,
   getTicket,
   listAssignableAgents,
+  listTicketReplies,
+  postTicketReply,
 } from "../../services/tickets";
+import type { TicketReply } from "../../types/agentPortal";
 import type { AssignableAgent, Ticket } from "../../types/tickets";
 
 type LoadState =
@@ -34,6 +39,77 @@ function NotFound() {
       >
         Back to all tickets
       </Link>
+    </section>
+  );
+}
+
+function ConversationSection({
+  ticketId,
+  closed,
+}: {
+  ticketId: number;
+  closed: boolean;
+}) {
+  const [replies, setReplies] = useState<TicketReply[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    listTicketReplies(ticketId)
+      .then((result) => {
+        if (cancelled) return;
+        setError(null);
+        setReplies(result);
+      })
+      .catch((caught: unknown) => {
+        if (cancelled) return;
+        setError(
+          caught instanceof Error ? caught.message : "Could not load the conversation.",
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ticketId, reloadToken]);
+
+  async function sendReply(body: string, isInternal: boolean) {
+    const reply = await postTicketReply(ticketId, { body, isInternal });
+    setReplies((current) => [...(current ?? []), reply]);
+  }
+
+  return (
+    <section className="bg-white border border-[#e2e4e9] rounded-2xl p-6 shadow-2xs space-y-4">
+      <h2 className="text-lg font-bold text-[#1c1b23]">Conversation</h2>
+      {error ? (
+        <div className="space-y-2">
+          <p role="alert" className="text-sm font-semibold text-rose-800">
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setReloadToken((n) => n + 1);
+            }}
+            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      ) : replies === null ? (
+        <p role="status" className="text-sm text-[#787586]">
+          Loading conversation...
+        </p>
+      ) : (
+        <ReplyThread replies={replies} emptyText="No replies yet." />
+      )}
+      <ReplyForm
+        allowInternal
+        idPrefix="admin-reply"
+        onSubmit={sendReply}
+        disabledReason={closed ? "This ticket is closed. Replies are no longer possible." : null}
+      />
     </section>
   );
 }
@@ -258,6 +334,12 @@ export function CompanyTicketDetailPage() {
           ) : null}
         </aside>
       </div>
+
+      <ConversationSection
+        key={ticket.ticketId}
+        ticketId={ticket.ticketId}
+        closed={ticket.status === "Closed"}
+      />
     </div>
   );
 }

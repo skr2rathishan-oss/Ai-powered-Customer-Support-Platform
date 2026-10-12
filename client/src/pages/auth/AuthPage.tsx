@@ -4,6 +4,7 @@ import { AuthShell } from "../../components/auth/AuthShell";
 import { AuthToggle } from "../../components/auth/AuthToggle";
 import { ForgotPasswordForm } from "../../components/auth/ForgotPasswordForm";
 import { LoginForm } from "../../components/auth/LoginForm";
+import { homeForRole } from "../../router/roleRedirect";
 import { ROUTES } from "../../router/routes";
 import { loginCompany, loginIndividual } from "../../services/auth";
 import { API_BASE_URL, apiRequest } from "../../services/apiClient";
@@ -105,16 +106,9 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
               }),
             );
 
-            const role = (user.roleName || "").toLowerCase().trim();
-            if (role === "platform admin" || role.includes("platform")) {
-              navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
-            } else if (user.accountType === "company" || role === "company admin" || role.includes("company")) {
-              navigate(ROUTES.DASHBOARD_COMPANY, { replace: true });
-            } else if (role === "customer") {
-              navigate(ROUTES.CUSTOMER_TICKETS, { replace: true });
-            } else {
-              navigate(ROUTES.HOME, { replace: true });
-            }
+            navigate(homeForRole(user.roleName, user.accountType), {
+              replace: true,
+            });
           }
         })
         .catch(() => {
@@ -139,11 +133,14 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
         .then((response) => {
           const user = response?.data?.user;
           if (user) {
-            const role = (user.roleName || "").toLowerCase().trim();
-            if (role === "platform admin" || role.includes("platform")) {
-              navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
-            } else if (role === "customer") {
-              navigate(ROUTES.CUSTOMER_TICKETS, { replace: true });
+            // Company admins are not auto-redirected from the login page
+            const target = homeForRole(user.roleName);
+            if (
+              target === ROUTES.ADMIN_DASHBOARD ||
+              target === ROUTES.CUSTOMER_TICKETS ||
+              target === ROUTES.AGENT_TICKETS
+            ) {
+              navigate(target, { replace: true });
             }
           }
         })
@@ -221,16 +218,10 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
         }),
       );
 
-      const role = (result.user?.roleName || "").toLowerCase().trim();
-      if (role === "platform admin" || role.includes("platform")) {
-        navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
-      } else if (mode === "company" || role === "company admin" || role.includes("company")) {
-        navigate(ROUTES.DASHBOARD_COMPANY, { replace: true });
-      } else if (role === "customer") {
-        navigate(ROUTES.CUSTOMER_TICKETS, { replace: true });
-      } else {
-        navigate(ROUTES.HOME, { replace: true });
-      }
+      navigate(
+        homeForRole(result.user?.roleName, mode === "company" ? "company" : undefined),
+        { replace: true },
+      );
     } catch (error) {
       setSubmitErrors((current) => ({
         ...current,

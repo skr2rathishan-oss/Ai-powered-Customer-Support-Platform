@@ -1,3 +1,4 @@
+import type { ReplyAuthorRole } from "./agentPortal";
 import type {
   TicketPagination,
   TicketPriority,
@@ -16,6 +17,24 @@ export interface CustomerTicket {
   createdAt: string;
   updatedAt: string;
   resolvedAt: string | null;
+}
+
+export interface CustomerReply {
+  replyId: number;
+  authorRole: ReplyAuthorRole;
+  authorName: string | null;
+  body: string;
+  createdAt: string;
+}
+
+export interface CustomerTicketDetail {
+  ticket: CustomerTicket;
+  replies: CustomerReply[];
+}
+
+export interface CustomerReplyResult {
+  reply: CustomerReply;
+  ticket: CustomerTicket;
 }
 
 export interface CustomerTicketFilters {

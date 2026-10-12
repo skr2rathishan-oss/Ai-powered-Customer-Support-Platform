@@ -101,16 +101,19 @@ test.describe("Customer portal", () => {
     await expect(page.getByRole("listitem").first()).toContainText(subject);
   });
 
-  test("ticket detail is read-only and another customer's ticket is not found", async ({ page }) => {
+  test("ticket detail shows public replies only and another customer's ticket is not found", async ({ page }) => {
     await loginAsCaseyAndWait(page);
     await page.getByText("Casey: app crashes on login").click();
 
     await expect(page).toHaveURL(/\/support\/tickets\/13$/);
     await expect(page.getByRole("heading", { name: "Casey: app crashes on login", level: 1 })).toBeVisible();
-    await expect(page.getByText("Riya Patel")).toBeVisible();
-    await expect(page.getByText(/Replies are coming soon/)).toBeVisible();
+    await expect(page.getByText("Riya Patel").first()).toBeVisible();
+    await expect(page.getByText("Hi Casey, which device are you using?")).toBeVisible();
+    await expect(page.getByText("INTERNAL-ONLY-NOTE-RIYA")).toHaveCount(0);
     await expect(page.locator("select")).toHaveCount(0);
-    await expect(page.getByRole("textbox")).toHaveCount(0);
+    // The only text box is the reply form, and customers get no internal option
+    await expect(page.getByRole("textbox")).toHaveCount(1);
+    await expect(page.getByLabel("Internal note")).toHaveCount(0);
 
     // Dana's ticket (same company), Globex's ticket
     for (const id of [16, 18]) {

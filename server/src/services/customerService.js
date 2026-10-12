@@ -1,8 +1,14 @@
 const defaultCustomerModel = require("../models/customerModel");
 const defaultTicketModel = require("../models/ticketModel");
+const defaultTicketReplyModel = require("../models/ticketReplyModel");
 const defaultFaqModel = require("../models/faqModel");
 const defaultAiSettingsModel = require("../models/aiSettingsModel");
 const AppError = require("../utils/AppError");
+const { validateReplyPayload } = require("../validators/replyValidator");
+const {
+  MAX_REPLIES_PER_TICKET,
+  AUTHOR_CUSTOMER,
+} = require("../constants/replyConstants");
 const { createCustomerContextResolver } = require("./customerContext");
 const { resolveAiSettings } = require("./aiSettingsService");
 const {
@@ -33,6 +39,17 @@ function toCustomerTicket(row) {
   };
 }
 
+// Whitelist: no author ids and no internal flag in the customer view
+function toCustomerReply(row) {
+  return {
+    replyId: row.replyId,
+    authorRole: row.authorRole,
+    authorName: row.authorName ?? null,
+    body: row.body,
+    createdAt: row.createdAt,
+  };
+}
+
 function toPublicFaq(row) {
   return {
     faqId: row.faqId,
@@ -45,6 +62,8 @@ function toPublicFaq(row) {
 function createCustomerService(dependencies = {}) {
   const customerModel = dependencies.customerModel || defaultCustomerModel;
   const ticketModel = dependencies.ticketModel || defaultTicketModel;
+  const ticketReplyModel =
+    dependencies.ticketReplyModel || defaultTicketReplyModel;
   const faqModel = dependencies.faqModel || defaultFaqModel;
   const aiSettingsModel = dependencies.aiSettingsModel || defaultAiSettingsModel;
   const { requireActiveCustomer } = createCustomerContextResolver(customerModel);
@@ -134,7 +153,61 @@ function createCustomerService(dependencies = {}) {
     const row = await ticketModel.findCustomerTicketById(companyId, userId, ticketId);
     if (!row) throw new AppError("Ticket not found", 404, "TICKET_NOT_FOUND");
 
-    return { ticket: toCustomerTicket(row) };
+    const replies = await ticketReplyModel.listReplies(companyId, ticketId, {
+      includeInternal: false,
+    });
+
+    return { ticket: toCustomerTicket(row), replies: replies.map(toCustomerReply) };
+  }
+
+  async function createReply(auth, rawId, body) {
+    const context = await requireActiveCustomer(auth);
+    const { companyId, userId } = context;
+
+    const ticketId = parseCustomerTicketId(rawId);
+    if (ticketId === null) {
+      throw new AppError("Invalid ticket id", 400, "INVALID_TICKET_ID");
+    }
+
+    const { value, errors } = validateReplyPayload(body, { allowInternal: false });
+    if (errors.length > 0) throw validationError(errors);
+
+    const ticket = await ticketModel.findCustomerTicketById(companyId, userId, ticketId);
+    if (!ticket) throw new AppError("Ticket not found", 404, "TICKET_NOT_FOUND");
+    if (ticket.status === "Closed") {
+      throw new AppError("This ticket is closed", 409, "TICKET_CLOSED");
+    }
+
+    const count = await ticketReplyModel.countReplies(companyId, ticketId);
+    if (count >= MAX_REPLIES_PER_TICKET) {
+      throw new AppError(
+        "This ticket has reached its reply limit",
+        409,
+        "REPLY_LIMIT_REACHED",
+      );
+    }
+
+    const reply = await ticketReplyModel.createReply(companyId, ticketId, {
+      authorId: userId,
+      authorRole: AUTHOR_CUSTOMER,
+      authorName: [context.firstName, context.lastName].filter(Boolean).join(" ").trim(),
+      isInternal: false,
+      body: value.body,
+    });
+    if (!reply) throw new AppError("This ticket is closed", 409, "TICKET_CLOSED");
+
+    // A customer reply on a Resolved ticket reopens it
+    let current = ticket;
+    if (ticket.status === "Resolved") {
+      current =
+        (await ticketModel.updateTicket(companyId, ticketId, {
+          status: "Open",
+          onlyIfStatus: "Resolved",
+        })) ||
+        ticket;
+    }
+
+    return { reply: toCustomerReply(reply), ticket: toCustomerTicket(current) };
   }
 
   async function createTicket(auth, body) {
@@ -172,7 +245,7 @@ function createCustomerService(dependencies = {}) {
     return { ticket: toCustomerTicket(row) };
   }
 
-  return { getProfile, listFaqs, listTickets, getTicket, createTicket };
+  return { getProfile, listFaqs, listTickets, getTicket, createReply, createTicket };
 }
 
 module.exports = { createCustomerService, toCustomerTicket };

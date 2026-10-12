@@ -85,6 +85,7 @@ test("customer API", async (context) => {
     findCustomerTicketById: record("findCustomerTicketById"),
     countOpenCustomerTickets: record("countOpenCustomerTickets"),
   };
+  const ticketReplyModel = { listReplies: async () => [] };
   const faqModel = { listFaqs: record("listFaqs"), listFaqMeta: record("listFaqMeta") };
   const aiSettingsModel = { findAiSettings: record("findAiSettings") };
   // Company admin guard must reject customers before touching this
@@ -97,6 +98,7 @@ test("customer API", async (context) => {
   const server = await startTestServer({
     customerModel,
     ticketModel,
+    ticketReplyModel,
     faqModel,
     aiSettingsModel,
     companyPortalModel,
