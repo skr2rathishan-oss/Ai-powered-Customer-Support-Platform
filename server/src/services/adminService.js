@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const { getMySQLPool } = require("../config/database");
 const { sendMail } = require("./emailService");
 const AppError = require("../utils/AppError");
+const { isGoogleOAuthConfigured } = require("../config/googleOAuth");
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Keys that look like credentials are never stored or accepted
@@ -33,7 +34,7 @@ function buildDefaultSettings() {
       jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1h",
       minPasswordLength: 8,
       requireSpecialChar: true,
-      googleOAuthEnabled: Boolean(process.env.GOOGLE_CLIENT_ID),
+      googleOAuthEnabled: isGoogleOAuthConfigured(),
       cookieSameSite: process.env.JWT_COOKIE_SAME_SITE || "lax",
       cookieSecure: process.env.JWT_COOKIE_SECURE === "true",
       sessionIdleTimeoutMinutes: 60,

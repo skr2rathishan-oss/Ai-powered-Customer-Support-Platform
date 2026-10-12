@@ -9,6 +9,7 @@ import {
 import { logout } from "../../services/auth";
 import { getAgentMe } from "../../services/agentPortal";
 import type { AgentMe } from "../../types/agentPortal";
+import { WorkspaceLink } from "../common/WorkspaceLink";
 
 type GuardState =
   | { status: "loading" }
@@ -148,6 +149,7 @@ export function AgentRouteGuard() {
             {state.message}
           </p>
           <div className="flex flex-col gap-3 w-full">
+            <WorkspaceLink areaHome={ROUTES.AGENT_TICKETS} />
             <button
               type="button"
               onClick={async () => {

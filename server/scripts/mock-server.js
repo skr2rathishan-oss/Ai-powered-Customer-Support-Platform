@@ -13,6 +13,9 @@ process.env.JWT_COOKIE_SECURE = "false";
 process.env.PORT = process.env.PORT || "5000";
 
 const bcrypt = require("bcrypt");
+const express = require("express");
+const { setAuthCookie } = require("../src/utils/authCookie");
+const { createAccessToken } = require("../src/utils/token");
 const { createApp } = require("../src/app");
 const AppError = require("../src/utils/AppError");
 
@@ -855,7 +858,8 @@ async function buildMockApp() {
     }),
   };
 
-  return createApp({
+  const realApp = createApp({
+    isGoogleConfigured: () => process.env.MOCK_GOOGLE !== "false",
     userModel,
     companyModel,
     tokenModel,
@@ -869,6 +873,63 @@ async function buildMockApp() {
     customerModel,
     sendAgentInviteEmail,
   });
+
+  // Mock-only fake Google start: signs the chosen seeded account in by cookie
+  // and redirects like the real callback would. Never part of the real server.
+  const mockGoogleAccounts = {
+    customer: () => users.find((u) => u.email === "casey@customer.example"),
+    agent: () => users.find((u) => u.email === "agent@acme-demo.com"),
+    admin: () => users.find((u) => u.email === "admin@supportpilot.com"),
+    company: () => users.find((u) => u.email === "owner@acme-demo.com"),
+  };
+  const mockClientOrigin = () => process.env.CLIENT_ORIGIN || "http://127.0.0.1:5173";
+
+  const app = express();
+  app.get(["/api/auth/google", "/auth/google"], (request, response, next) => {
+    if (process.env.MOCK_GOOGLE === "false") return next();
+
+    const failure = request.query.fail;
+    if (failure === "no_account") {
+      return response.redirect(`${mockClientOrigin()}/login?error=google_no_account`);
+    }
+
+    const as = String(request.query.as || "customer");
+    const user = mockGoogleAccounts[as] && mockGoogleAccounts[as]();
+    if (!user) {
+      return response.redirect(`${mockClientOrigin()}/login?error=google_auth_failed`);
+    }
+
+    const isCompany = user.roleName === "Company Admin";
+    const company = isCompany && companies.find((c) => c.companyId === user.companyId);
+    setAuthCookie(
+      response,
+      createAccessToken(
+        isCompany
+          ? {
+              accountType: "company",
+              userId: user.userId,
+              companyId: user.companyId,
+              companyName: company.companyName,
+              email: company.businessEmail,
+              onlineStatus: user.onlineStatus,
+              roleName: user.roleName,
+            }
+          : {
+              accountType: "individual",
+              userId: user.userId,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              onlineStatus: user.onlineStatus,
+              roleName: user.roleName,
+            },
+      ),
+    );
+    response.set("Cache-Control", "no-store");
+    return response.redirect(`${mockClientOrigin()}/auth/callback`);
+  });
+  app.use(realApp);
+  return app;
 }
 
 async function listen() {

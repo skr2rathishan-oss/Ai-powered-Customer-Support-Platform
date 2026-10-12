@@ -49,31 +49,6 @@ export function Footer() {
             customer support operations.
           </p>
 
-          {/* Social Icons */}
-          <div className="flex gap-3 mb-8">
-            <a
-              href="#hero"
-              aria-label="SupportPilot Web"
-              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-colors text-white"
-            >
-              <span className="material-symbols-outlined text-sm">public</span>
-            </a>
-            <a
-              href="#faq"
-              aria-label="SupportPilot Community"
-              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-colors text-white"
-            >
-              <span className="material-symbols-outlined text-sm">forum</span>
-            </a>
-            <a
-              href="#pricing"
-              aria-label="Share SupportPilot"
-              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-colors text-white"
-            >
-              <span className="material-symbols-outlined text-sm">share</span>
-            </a>
-          </div>
-
           {/* Newsletter Box */}
           <div className="max-w-sm">
             <p className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-2">
@@ -160,9 +135,12 @@ export function Footer() {
               </a>
             </li>
             <li>
-              <a className="hover:text-primary transition-colors" href="#hero">
-                API Docs
-              </a>
+              <Link
+                className="hover:text-primary transition-colors"
+                to={ROUTES.REGISTER_CUSTOMER}
+              >
+                Customer Sign Up
+              </Link>
             </li>
             <li>
               <Link className="hover:text-primary transition-colors" to={ROUTES.LOGIN}>
@@ -178,11 +156,6 @@ export function Footer() {
             Company
           </h5>
           <ul className="space-y-3.5 text-sm text-white/70">
-            <li>
-              <a className="hover:text-primary transition-colors" href="#hero">
-                About Us
-              </a>
-            </li>
             <li>
               <a className="hover:text-primary transition-colors" href="#pricing">
                 Enterprise
@@ -201,6 +174,14 @@ export function Footer() {
                 Sign In
               </Link>
             </li>
+            <li>
+              <Link
+                className="hover:text-primary transition-colors"
+                to={ROUTES.LOGIN_COMPANY}
+              >
+                Company Sign In
+              </Link>
+            </li>
           </ul>
         </div>
       </div>
@@ -209,18 +190,15 @@ export function Footer() {
       <div className="max-w-6xl mx-auto px-6 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between text-xs text-white/50 gap-4">
         <p>© 2026 SupportPilot AI Inc. All rights reserved.</p>
         <div className="flex gap-6">
-          <a className="hover:text-white transition-colors" href="#hero">
+          <Link className="hover:text-white transition-colors" to={ROUTES.TERMS}>
             Terms of Service
-          </a>
-          <a className="hover:text-white transition-colors" href="#hero">
+          </Link>
+          <Link className="hover:text-white transition-colors" to={ROUTES.PRIVACY}>
             Privacy Policy
-          </a>
-          <a className="hover:text-white transition-colors" href="#hero">
+          </Link>
+          <Link className="hover:text-white transition-colors" to={ROUTES.PRIVACY}>
             Security
-          </a>
-          <a className="hover:text-white transition-colors" href="#hero">
-            Status
-          </a>
+          </Link>
         </div>
       </div>
     </footer>

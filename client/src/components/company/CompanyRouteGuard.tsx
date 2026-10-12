@@ -10,6 +10,7 @@ import {
 import { logout } from "../../services/auth";
 import { getCompanyMe } from "../../services/company";
 import type { CompanyMeData } from "../../types/company";
+import { WorkspaceLink } from "../common/WorkspaceLink";
 
 type GuardState =
   | { status: "loading" }
@@ -182,6 +183,9 @@ export function CompanyRouteGuard() {
             {state.message}
           </p>
           <div className="flex flex-col gap-3 w-full">
+            {!isPlatformAdmin && (
+              <WorkspaceLink areaHome={ROUTES.DASHBOARD_COMPANY} />
+            )}
             {isPlatformAdmin ? (
               <Link
                 to={ROUTES.ADMIN_DASHBOARD}

@@ -1,5 +1,6 @@
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
 const { createAccessToken } = require("../utils/token");
+const { clientRedirect } = require("../utils/clientRedirect");
 
 function createAuthController(authService) {
   async function signIn(request, response) {
@@ -79,12 +80,29 @@ function createAuthController(authService) {
     });
   }
 
+  const GOOGLE_SIGN_IN_ROLES = new Set([
+    "Platform Admin",
+    "Support Agent",
+    "Customer",
+  ]);
+
   function googleCallback(request, response) {
     const rawUser = request.user;
     if (!rawUser) {
-      const clientOrigin =
-        process.env.CLIENT_ORIGIN || "http://localhost:5173";
-      return response.redirect(`${clientOrigin}/login?error=google_auth_failed`);
+      return clientRedirect(response, "/login", { error: "google_no_account" });
+    }
+
+    if (
+      rawUser.accountStatus &&
+      String(rawUser.accountStatus).toLowerCase() !== "active"
+    ) {
+      return clientRedirect(response, "/login", { error: "google_inactive" });
+    }
+
+    if (!GOOGLE_SIGN_IN_ROLES.has(rawUser.roleName)) {
+      return clientRedirect(response, "/login", {
+        error: "google_role_unsupported",
+      });
     }
 
     const safeUser = {
@@ -95,7 +113,7 @@ function createAuthController(authService) {
       ...(rawUser.lastName && { lastName: rawUser.lastName }),
       ...(rawUser.googleId && { googleId: rawUser.googleId }),
       onlineStatus: rawUser.onlineStatus || "Offline",
-      roleName: rawUser.roleName || "Agent",
+      roleName: rawUser.roleName,
     };
 
     const accessToken = authService.generateToken
@@ -105,9 +123,7 @@ function createAuthController(authService) {
     setAuthCookie(response, accessToken);
     response.set("Cache-Control", "no-store");
 
-    const clientOrigin =
-      process.env.CLIENT_ORIGIN || "http://localhost:5173";
-    return response.redirect(`${clientOrigin}/login?authenticated=true`);
+    return clientRedirect(response, "/auth/callback");
   }
 
   async function forgotPassword(request, response) {

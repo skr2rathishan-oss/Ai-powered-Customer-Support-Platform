@@ -78,7 +78,10 @@ function createApp(dependencies = {}) {
     response.status(200).json({ status: "ok" });
   });
 
-  const authRouter = createAuthRouter(authService, { passport });
+  const authRouter = createAuthRouter(authService, {
+    passport,
+    isGoogleConfigured: dependencies.isGoogleConfigured,
+  });
   const adminRouter = createAdminRouter(adminService);
   app.use("/api/auth", authRouter);
   app.use("/auth", authRouter);

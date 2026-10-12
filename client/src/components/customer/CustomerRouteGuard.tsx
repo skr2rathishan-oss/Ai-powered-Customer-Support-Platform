@@ -9,6 +9,7 @@ import {
 import { logout } from "../../services/auth";
 import { getCustomerMe } from "../../services/customer";
 import type { CustomerMe } from "../../types/customer";
+import { WorkspaceLink } from "../common/WorkspaceLink";
 
 type GuardState =
   | { status: "loading" }
@@ -148,6 +149,7 @@ export function CustomerRouteGuard() {
             {state.message}
           </p>
           <div className="flex flex-col gap-3 w-full">
+            <WorkspaceLink areaHome={ROUTES.CUSTOMER_TICKETS} />
             <button
               type="button"
               onClick={async () => {

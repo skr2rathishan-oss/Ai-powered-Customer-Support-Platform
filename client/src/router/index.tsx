@@ -22,6 +22,9 @@ import { AgentRouteGuard } from "../components/agent/AgentRouteGuard";
 import { AgentLayout } from "../components/agent/AgentLayout";
 import { AgentQueuePage } from "../pages/agent/AgentQueuePage";
 import { AgentTicketDetailPage } from "../pages/agent/AgentTicketDetailPage";
+import { AuthCallbackPage } from "../pages/auth/AuthCallbackPage";
+import { NotFoundPage } from "../pages/NotFoundPage";
+import { LegalPage } from "../pages/legal/LegalPage";
 import { ResetPasswordPage } from "../pages/auth/ResetPasswordPage";
 import { PlatformAdminDashboardPage } from "../pages/admin/PlatformAdminDashboardPage";
 import { PlatformCompaniesPage } from "../pages/admin/PlatformCompaniesPage";
@@ -50,6 +53,13 @@ export function AppRouter() {
         path={ROUTES.RESET_PASSWORD}
         element={<ResetPasswordPage />}
       />
+
+      {/* Google sign-in return route (cookie already set by the server) */}
+      <Route path={ROUTES.AUTH_CALLBACK} element={<AuthCallbackPage />} />
+
+      {/* Legal */}
+      <Route path={ROUTES.TERMS} element={<LegalPage kind="terms" />} />
+      <Route path={ROUTES.PRIVACY} element={<LegalPage kind="privacy" />} />
 
       {/* Company Registration */}
       <Route
@@ -149,8 +159,8 @@ export function AppRouter() {
         element={<PlatformSettingsPage />}
       />
 
-      {/* Fallback to Landing Page */}
-      <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
+      {/* Unknown URLs */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

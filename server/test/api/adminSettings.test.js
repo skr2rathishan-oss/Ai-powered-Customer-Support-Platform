@@ -290,3 +290,26 @@ test("Platform Admin Settings & Diagnostics API Tests", async (context) => {
     assert.ok(body.data.databases);
   });
 });
+
+test("googleOAuthEnabled default follows the Google configuration helper", async () => {
+  const saved = {
+    id: process.env.GOOGLE_CLIENT_ID,
+    secret: process.env.GOOGLE_CLIENT_SECRET,
+  };
+  const model = createMockModel();
+  try {
+    process.env.GOOGLE_CLIENT_ID = "real-id";
+    delete process.env.GOOGLE_CLIENT_SECRET;
+    let service = createAdminService({ adminModel: model });
+    assert.equal((await service.getPlatformSettings()).security.googleOAuthEnabled, false);
+
+    process.env.GOOGLE_CLIENT_SECRET = "real-secret";
+    service = createAdminService({ adminModel: createMockModel() });
+    assert.equal((await service.getPlatformSettings()).security.googleOAuthEnabled, true);
+  } finally {
+    for (const [key, value] of [["GOOGLE_CLIENT_ID", saved.id], ["GOOGLE_CLIENT_SECRET", saved.secret]]) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});

@@ -7,6 +7,7 @@ import type {
 } from "../types/auth";
 import {
   API_BASE_URL,
+  apiRequest,
   getAuthToken,
   setAuthToken,
   setStoredUser,
@@ -301,3 +302,19 @@ export async function resetPassword(
   return (payload as { message?: string })?.message ?? "Password reset successfully.";
 }
 
+
+export interface AuthProviders {
+  google: boolean;
+}
+
+/** Which sign-in providers the server can offer. Any failure means none. */
+export async function getAuthProviders(): Promise<AuthProviders> {
+  try {
+    const response = await apiRequest<{ data?: { google?: boolean } }>(
+      "/api/auth/providers",
+    );
+    return { google: response?.data?.google === true };
+  } catch {
+    return { google: false };
+  }
+}

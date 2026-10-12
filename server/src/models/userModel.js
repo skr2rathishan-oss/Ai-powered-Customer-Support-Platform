@@ -98,12 +98,20 @@ async function findOrCreate(userData, callback) {
       }
     }
 
+    if (userData.allowCreate === false) {
+      if (callback) return callback(null, false);
+      return null;
+    }
+
     // 3. New user - resolve default role (Agent / User)
     const [roles] = await pool.execute(
       "SELECT role_id, role_name FROM roles WHERE role_name IN ('Agent', 'User', 'Individual') ORDER BY role_id ASC LIMIT 1",
     );
-    const roleId = roles[0]?.role_id || 1;
-    const roleName = roles[0]?.role_name || "Agent";
+    if (!roles[0]) {
+      throw new Error("No default role is configured for new Google users");
+    }
+    const roleId = roles[0].role_id;
+    const roleName = roles[0].role_name;
 
     // Insert new user into MySQL with google_id and NULL password_hash
     const [insertResult] = await pool.execute(

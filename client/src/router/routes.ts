@@ -22,6 +22,9 @@ export const ROUTES = {
   ADMIN_COMPANIES: "/admin/companies",
   ADMIN_SETTINGS: "/admin/settings",
   RESET_PASSWORD: "/reset-password",
+  AUTH_CALLBACK: "/auth/callback",
+  TERMS: "/terms",
+  PRIVACY: "/privacy",
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];
