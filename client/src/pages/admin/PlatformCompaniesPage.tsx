@@ -59,9 +59,11 @@ export function PlatformCompaniesPage() {
         limit: 10,
       });
 
-      setCompanies(response.companies);
-      setCounts(response.counts);
-      setPagination(response.pagination);
+      // Keep the previous values for any part missing from the response so the
+      // page never renders with undefined counts or pagination
+      setCompanies(response.companies ?? []);
+      if (response.counts) setCounts(response.counts);
+      if (response.pagination) setPagination(response.pagination);
     } catch (_err) {
       showToast("Failed to load companies directory.");
     } finally {

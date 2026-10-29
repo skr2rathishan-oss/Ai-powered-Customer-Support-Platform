@@ -99,6 +99,130 @@ cd client && E2E_SERVER_COMMAND="npm run mock" npx playwright test   # browser t
 ```
 The browser tests start their own mock API on port 5000 and the client on port 5173, so stop your dev servers before running them.
 
+To refresh the screenshots below: `cd client && CAPTURE_SCREENSHOTS=1 E2E_SERVER_COMMAND="npm run mock" npx playwright test screenshots`
+
+---
+
+## 🗄️ Database Design
+
+MySQL (TiDB Cloud in production). The full schema, with every key, index and foreign key, is in [`docs/database/schema.sql`](docs/database/schema.sql). Solid lines below are foreign keys enforced by the database; dashed lines are relationships the application enforces (every query is scoped by `company_id`).
+
+```mermaid
+erDiagram
+    roles ||--o{ users : "role_id"
+    companies |o--o{ users : "company_id"
+    companies ||--o{ company_admins : "company_id"
+    users ||--o| company_admins : "admin_id"
+    users ||--o{ password_reset_tokens : "user_id"
+    companies ||--o{ tickets : "company_id"
+    users |o..o{ tickets : "customer_id"
+    users |o..o{ tickets : "assigned_agent_id"
+    tickets ||..o{ ticket_replies : "ticket_id"
+    users |o..o{ ticket_replies : "author_id"
+    companies ||--o{ faqs : "company_id"
+    companies ||..o| company_ai_settings : "company_id"
+    companies ||--o{ chat_sessions : "company_id"
+    users ||--o{ chat_sessions : "customer_id"
+    tickets |o--o| chat_sessions : "ticket_id"
+    chat_sessions ||--o{ chat_messages : "session_id"
+
+    roles {
+        int role_id PK
+        varchar role_name UK
+    }
+    companies {
+        int company_id PK
+        varchar company_name
+        varchar industry
+        varchar business_email UK
+        enum status
+        timestamp registration_date
+    }
+    users {
+        int user_id PK
+        int role_id FK
+        int company_id FK
+        varchar email UK
+        varchar password_hash
+        enum account_status
+    }
+    company_admins {
+        int admin_id PK,FK
+        int company_id FK
+        timestamp appointed_at
+    }
+    password_reset_tokens {
+        int reset_id PK
+        int user_id FK
+        varchar token_hash
+        datetime expires_at
+        tinyint used
+    }
+    tickets {
+        int ticket_id PK
+        int company_id FK
+        int customer_id
+        int assigned_agent_id
+        varchar subject
+        text description
+        enum status
+        enum priority
+    }
+    ticket_replies {
+        int reply_id PK
+        int ticket_id
+        int author_id
+        varchar author_role
+        tinyint is_internal
+        text body
+    }
+    faqs {
+        int faq_id PK
+        int company_id FK
+        varchar question
+        text answer
+        varchar category
+        tinyint is_published
+    }
+    company_ai_settings {
+        int settings_id PK
+        int company_id UK
+        tinyint enabled
+        tinyint confidence_threshold
+        tinyint escalate_after_failures
+    }
+    chat_sessions {
+        int session_id PK
+        int company_id FK
+        int customer_id FK
+        int ticket_id FK
+        enum status
+        tinyint failed_answers
+    }
+    chat_messages {
+        int message_id PK
+        int session_id FK
+        enum sender
+        text body
+        tinyint confidence
+    }
+```
+
+Deleting a record is safe by design: a company delete runs in one transaction that removes its dependent data first, child rows such as chat messages cascade, and a deleted ticket only clears the link from its chat (`ON DELETE SET NULL`).
+
+---
+
+## 📸 Screenshots
+
+| | |
+|---|---|
+| **Platform Admin dashboard**<br>![Admin dashboard](docs/screenshots/03-admin-dashboard.png) | **Company directory (search, filter, sort, onboard)**<br>![Companies](docs/screenshots/04-admin-companies.png) |
+| **Company Admin dashboard**<br>![Company dashboard](docs/screenshots/06-company-dashboard.png) | **FAQ management (create, edit, publish, delete)**<br>![FAQs](docs/screenshots/07-company-faqs.png) |
+| **Customer chat with the AI assistant**<br>![AI chat](docs/screenshots/13-customer-ai-chat.png) | **Chat handed to a support agent as a ticket**<br>![Escalated chat](docs/screenshots/14-customer-chat-escalated.png) |
+| **Support Agent dashboard**<br>![Agent dashboard](docs/screenshots/16-agent-dashboard.png) | **Customer dashboard on mobile**<br>![Mobile](docs/screenshots/15-customer-dashboard-mobile.png) |
+
+More in [`docs/screenshots/`](docs/screenshots/): login, onboarding form validation, FAQ form, tickets, agents, AI settings and the agent queue.
+
 ---
 
 ## 🛡️ Role-Based Portals

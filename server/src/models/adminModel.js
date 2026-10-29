@@ -381,8 +381,22 @@ async function updateCompanyStatus(companyId, status) {
   return getCompanyById(companyId);
 }
 
+// Company data whose foreign keys block deleting the company's admins and
+// users (RESTRICT / NO ACTION), removed first and in this order: deleting
+// tickets cascades to their assignments, which reference support_agents,
+// which in turn reference company_admins. Some of these tables only exist in
+// databases created before the current schema.
+const COMPANY_DEPENDENT_TABLES = [
+  "faqs",
+  "agent_invitations",
+  "knowledge_document_metadata",
+  "tickets",
+  "support_agents",
+];
+
 /**
- * Deletes a company and its associations.
+ * Deletes a company and everything that belongs to it in one transaction:
+ * either all of it is removed or nothing is.
  */
 async function deleteCompany(companyId) {
   const pool = getMySQLPool();
@@ -391,6 +405,13 @@ async function deleteCompany(companyId) {
   try {
     await connection.beginTransaction();
 
+    for (const table of COMPANY_DEPENDENT_TABLES) {
+      try {
+        await connection.execute(`DELETE FROM ${table} WHERE company_id = ?`, [companyId]);
+      } catch (error) {
+        if (error.code !== "ER_NO_SUCH_TABLE") throw error;
+      }
+    }
     await connection.execute(`DELETE FROM company_admins WHERE company_id = ?`, [companyId]);
     await connection.execute(`DELETE FROM users WHERE company_id = ?`, [companyId]);
     const [res] = await connection.execute(`DELETE FROM companies WHERE company_id = ?`, [companyId]);

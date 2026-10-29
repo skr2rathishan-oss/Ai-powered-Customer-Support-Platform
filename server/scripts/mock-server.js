@@ -11,8 +11,10 @@ process.env.JWT_SECRET =
   process.env.JWT_SECRET || "mock-server-secret-that-is-longer-than-32-chars";
 process.env.JWT_COOKIE_SECURE = "false";
 process.env.PORT = process.env.PORT || "5000";
-// The assistant answers by FAQ matching here, never by calling a paid API
-delete process.env.NVIDIA_API_KEY;
+// The assistant answers by FAQ matching here, never by calling the AI API.
+// An empty value (not delete) because dotenv, loaded later by emailService,
+// only fills variables that are missing and would restore the real key.
+process.env.NVIDIA_API_KEY = "";
 
 const bcrypt = require("bcrypt");
 const express = require("express");
@@ -833,11 +835,16 @@ async function buildMockApp() {
     getRegistrationTrends: async () => [],
     getRecentRegistrations: async () => companies.map((c) => ({ ...c, websiteUrl: c.website })),
     getRecentActivities: async () => [],
+    // Same response shape as adminModel.getCompaniesDirectory
     getCompaniesDirectory: async () => ({
-      companies: companies.map((c) => ({ ...c, websiteUrl: c.website })),
-      total: companies.length,
-      page: 1,
-      limit: 10,
+      companies: companies.map((c) => ({ ...c, companyPhone: c.phone, websiteUrl: c.website })),
+      counts: {
+        total: companies.length,
+        active: companies.filter((c) => c.status === "Active").length,
+        pending: companies.filter((c) => c.status === "Pending").length,
+        suspended: companies.filter((c) => c.status === "Suspended").length,
+      },
+      pagination: { page: 1, limit: 10, total: companies.length, totalPages: 1 },
     }),
     getCompanyById: async (id) => companies.find((c) => c.companyId === Number(id)) || null,
     updateCompanyStatus: async (id, status) => {
