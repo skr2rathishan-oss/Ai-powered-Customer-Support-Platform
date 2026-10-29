@@ -15,7 +15,20 @@ export function AgentLayout() {
     "?";
   const displayName =
     [agent.firstName, agent.lastName].filter(Boolean).join(" ") || agent.email;
-  const queueActive = location.pathname.startsWith(ROUTES.AGENT_TICKETS);
+  const navItems = [
+    {
+      label: "Dashboard",
+      to: ROUTES.AGENT_DASHBOARD,
+      icon: "space_dashboard",
+      active: location.pathname === ROUTES.AGENT_DASHBOARD,
+    },
+    {
+      label: "My queue",
+      to: ROUTES.AGENT_TICKETS,
+      icon: "inbox",
+      active: location.pathname.startsWith(ROUTES.AGENT_TICKETS),
+    },
+  ];
 
   async function handleSignOut() {
     try {
@@ -81,20 +94,23 @@ export function AgentLayout() {
           aria-label="Agent navigation"
           className="max-w-6xl mx-auto px-4 sm:px-8 flex gap-1 overflow-x-auto"
         >
-          <Link
-            to={ROUTES.AGENT_TICKETS}
-            aria-current={queueActive ? "page" : undefined}
-            className={`flex items-center gap-2 px-3.5 py-3 text-sm whitespace-nowrap border-b-2 no-underline transition-colors ${
-              queueActive
-                ? "border-[#6D5EF5] text-[#6D5EF5] font-semibold"
-                : "border-transparent text-[#474555] hover:text-[#1c1b23] hover:bg-[#f6f2ff]"
-            }`}
-          >
-            <span className="material-symbols-outlined text-lg" aria-hidden="true">
-              inbox
-            </span>
-            My queue
-          </Link>
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              aria-current={item.active ? "page" : undefined}
+              className={`flex items-center gap-2 px-3.5 py-3 text-sm whitespace-nowrap border-b-2 no-underline transition-colors ${
+                item.active
+                  ? "border-[#6D5EF5] text-[#6D5EF5] font-semibold"
+                  : "border-transparent text-[#474555] hover:text-[#1c1b23] hover:bg-[#f6f2ff]"
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">
+                {item.icon}
+              </span>
+              {item.label}
+            </Link>
+          ))}
         </nav>
       </header>
 

@@ -13,7 +13,9 @@ async function loginAsAgent(page: Page, email = "agent@acme-demo.com", password 
 
 async function loginAsAgentAndWait(page: Page, email?: string) {
   await loginAsAgent(page, email);
-  await expect(page).toHaveURL(/\/agent\/tickets$/, { timeout: 10000 });
+  await expect(page).toHaveURL(/\/agent\/dashboard$/, { timeout: 10000 });
+  await page.getByRole("link", { name: "My queue" }).click();
+  await expect(page).toHaveURL(/\/agent\/tickets$/);
   await expect(page.getByRole("heading", { name: "My queue", level: 1 })).toBeVisible();
 }
 
@@ -22,7 +24,7 @@ async function loginAsCustomer(page: Page) {
   await page.locator("#individual-email").fill("casey@customer.example");
   await page.locator("#individual-password").fill("Customer@2026!");
   await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/support\/tickets$/, { timeout: 10000 });
+  await expect(page).toHaveURL(/\/support$/, { timeout: 10000 });
 }
 
 async function adminApi(playwright: { request: { newContext: (o: object) => Promise<APIRequestContext> } }) {

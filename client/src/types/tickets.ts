@@ -66,6 +66,29 @@ export interface UpdateTicketInput {
   assignedAgentId?: number | null;
 }
 
+export interface TicketStatusCounts {
+  open: number;
+  inProgress: number;
+  resolved: number;
+  closed: number;
+  total: number;
+}
+
+export interface AgentWorkload {
+  userId: number;
+  name: string;
+  onlineStatus: string;
+  openTickets: number;
+}
+
+export interface TicketStats {
+  byStatus: TicketStatusCounts;
+  openByPriority: Record<TicketPriority, number>;
+  unassigned: number;
+  createdPerDay: { day: string; total: number }[];
+  agentWorkload: AgentWorkload[];
+}
+
 export interface FieldError {
   field: string;
   message: string;

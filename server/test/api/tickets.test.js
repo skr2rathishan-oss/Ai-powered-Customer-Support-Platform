@@ -89,6 +89,7 @@ test("company tickets API", async (context) => {
     updateTicket: record("updateTicket"),
     findAssignableAgent: record("findAssignableAgent"),
     listAssignableAgents: record("listAssignableAgents"),
+    getTicketStats: record("getTicketStats"),
   };
 
   const server = await startTestServer({ companyPortalModel, ticketModel });
@@ -130,6 +131,23 @@ test("company tickets API", async (context) => {
       listAssignableAgents: async () => [
         { userId: 5, firstName: "Sam", lastName: "Agent", email: "s@acme.test", onlineStatus: "Online" },
       ],
+      getTicketStats: async () => ({
+        statusRows: [
+          { status: "Open", total: 4 },
+          { status: "In Progress", total: 2 },
+          { status: "Resolved", total: "3" },
+        ],
+        priorityRows: [
+          { priority: "Urgent", total: 1 },
+          { priority: "Medium", total: 5 },
+        ],
+        unassigned: 2,
+        dailyRows: [{ day: new Date().toISOString().slice(0, 10), total: 3 }],
+        agentRows: [
+          { userId: 5, firstName: "Sam", lastName: "Agent", onlineStatus: "Online", openTickets: 4 },
+          { userId: 6, firstName: null, lastName: null, onlineStatus: null, openTickets: 0 },
+        ],
+      }),
     };
   });
 
@@ -139,6 +157,7 @@ test("company tickets API", async (context) => {
     ["GET", "/api/company/tickets/1", undefined],
     ["PATCH", "/api/company/tickets/1", { status: "Closed" }],
     ["GET", "/api/company/tickets/assignable-agents", undefined],
+    ["GET", "/api/company/tickets/stats", undefined],
   ];
 
   await context.test("401 without credentials and with an invalid token", async () => {
@@ -394,6 +413,25 @@ test("company tickets API", async (context) => {
     assert.equal(json.data.agents[0].userId, 5);
     assert.deepEqual(calls.listAssignableAgents[0], [7]);
     assert.equal(calls.findTicketById, undefined);
+  });
+
+  await context.test("stats are scoped to the company and shaped for the dashboard", async () => {
+    const response = await call("GET", "/api/company/tickets/stats?companyId=99", {
+      token: companyToken({ companyId: 99 }),
+    });
+    const { data } = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(calls.getTicketStats[0], [7, 7]);
+    assert.equal(calls.findTicketById, undefined);
+    assert.deepEqual(data.byStatus, { open: 4, inProgress: 2, resolved: 3, closed: 0, total: 9 });
+    assert.deepEqual(data.openByPriority, { Low: 0, Medium: 5, High: 0, Urgent: 1 });
+    assert.equal(data.unassigned, 2);
+    assert.equal(data.createdPerDay.length, 7);
+    assert.equal(data.createdPerDay[6].total, 3);
+    assert.equal(data.createdPerDay[0].total, 0);
+    assert.deepEqual(data.agentWorkload[0], { userId: 5, name: "Sam Agent", onlineStatus: "Online", openTickets: 4 });
+    assert.deepEqual(data.agentWorkload[1], { userId: 6, name: "Unnamed agent", onlineStatus: "Offline", openTickets: 0 });
   });
 
   await context.test("model errors become 500", async () => {

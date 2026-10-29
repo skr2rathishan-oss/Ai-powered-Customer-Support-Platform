@@ -1,8 +1,21 @@
 const defaultCompanyPortalModel = require("../models/companyPortalModel");
+const defaultChatModel = require("../models/chatModel");
 const { createCompanyContextResolver } = require("./companyContext");
 
 function createCompanyService(dependencies = {}) {
   const portal = dependencies.companyPortalModel || defaultCompanyPortalModel;
+  const chatModel = dependencies.chatModel || defaultChatModel;
+
+  // Share of finished AI chats the assistant resolved without a human
+  async function getAiResolutionRate(companyId) {
+    try {
+      const { resolved, escalated } = await chatModel.countOutcomes(companyId);
+      const finished = resolved + escalated;
+      return finished > 0 ? Math.round((resolved / finished) * 100) : null;
+    } catch (_error) {
+      return null;
+    }
+  }
   const { requireActiveCompanyAdmin } = createCompanyContextResolver(portal);
 
   async function getCompanyProfile(auth) {
@@ -54,7 +67,7 @@ function createCompanyService(dependencies = {}) {
         supportAgents,
         faqArticles,
         aiConfigured,
-        aiResolutionRate: null,
+        aiResolutionRate: await getAiResolutionRate(context.companyId),
         avgFirstResponseMinutes: null,
         features: {
           tickets: true,

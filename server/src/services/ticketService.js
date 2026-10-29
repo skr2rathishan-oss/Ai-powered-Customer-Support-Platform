@@ -133,6 +133,56 @@ function createTicketService(dependencies = {}) {
     return updated;
   }
 
+  async function getTicketStats(auth) {
+    const { companyId } = await requireActiveCompanyAdmin(auth);
+    const days = 7;
+    const raw = await ticketModel.getTicketStats(companyId, days);
+
+    const byStatus = { open: 0, inProgress: 0, resolved: 0, closed: 0, total: 0 };
+    const statusKeys = {
+      Open: "open",
+      "In Progress": "inProgress",
+      Resolved: "resolved",
+      Closed: "closed",
+    };
+    for (const row of raw.statusRows) {
+      const total = Number(row.total || 0);
+      if (statusKeys[row.status]) byStatus[statusKeys[row.status]] = total;
+      byStatus.total += total;
+    }
+
+    const openByPriority = { Low: 0, Medium: 0, High: 0, Urgent: 0 };
+    for (const row of raw.priorityRows) {
+      if (row.priority in openByPriority) {
+        openByPriority[row.priority] = Number(row.total || 0);
+      }
+    }
+
+    // One entry per day, oldest first, including days with no tickets.
+    // Day keys are UTC to match how the database groups created_at.
+    const counts = new Map(raw.dailyRows.map((row) => [row.day, Number(row.total || 0)]));
+    const createdPerDay = [];
+    for (let offset = days - 1; offset >= 0; offset -= 1) {
+      const date = new Date();
+      date.setUTCDate(date.getUTCDate() - offset);
+      const day = date.toISOString().slice(0, 10);
+      createdPerDay.push({ day, total: counts.get(day) || 0 });
+    }
+
+    return {
+      byStatus,
+      openByPriority,
+      unassigned: raw.unassigned,
+      createdPerDay,
+      agentWorkload: raw.agentRows.map((row) => ({
+        userId: row.userId,
+        name: [row.firstName, row.lastName].filter(Boolean).join(" ") || "Unnamed agent",
+        onlineStatus: row.onlineStatus || "Offline",
+        openTickets: Number(row.openTickets || 0),
+      })),
+    };
+  }
+
   async function listAssignableAgents(auth) {
     const { companyId } = await requireActiveCompanyAdmin(auth);
     const agents = await ticketModel.listAssignableAgents(companyId);
@@ -194,6 +244,7 @@ function createTicketService(dependencies = {}) {
     createTicket,
     updateTicket,
     listAssignableAgents,
+    getTicketStats,
   };
 }
 

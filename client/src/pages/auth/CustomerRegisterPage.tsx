@@ -18,7 +18,7 @@ export function CustomerRegisterPage() {
       ) : (
         <CustomerRegistrationForm
           onAuthenticated={() =>
-            navigate(ROUTES.CUSTOMER_TICKETS, { replace: true })
+            navigate(ROUTES.CUSTOMER_DASHBOARD, { replace: true })
           }
         />
       )}

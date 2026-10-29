@@ -67,7 +67,9 @@ test("GET /api/company/me", async (context) => {
     },
   };
 
-  const server = await startTestServer({ companyPortalModel });
+  let chatOutcomes = { resolved: 0, escalated: 0 };
+  const chatModel = { countOutcomes: async () => chatOutcomes };
+  const server = await startTestServer({ companyPortalModel, chatModel });
   context.after(() => server.close());
 
   const { cookieName } = getAuthConfig();
@@ -146,6 +148,12 @@ test("GET /api/company/me", async (context) => {
       tickets: true, agents: true, faqs: true, aiSettings: true,
     });
     assert.ok(!/passwordHash|password_hash|should-never-leak/i.test(JSON.stringify(body)));
+
+    // 3 of 4 finished chats were solved by the assistant
+    chatOutcomes = { resolved: 3, escalated: 1 };
+    const withChats = await (await get("/api/company/me", companyToken())).json();
+    assert.equal(withChats.data.overview.aiResolutionRate, 75);
+    chatOutcomes = { resolved: 0, escalated: 0 };
   });
 
   await context.test("ticket counts surface in the overview", async () => {

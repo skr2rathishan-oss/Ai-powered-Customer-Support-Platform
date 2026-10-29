@@ -18,7 +18,9 @@ test.describe("Company portal shell", () => {
     await page.locator('button[type="submit"]').click();
 
     await expect(page).toHaveURL(/\/company\/dashboard/, { timeout: 10000 });
-    await expect(page.getByRole("heading", { name: /Welcome back, Ada/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Good (morning|afternoon|evening), Ada/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ticket activity" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Agent workload" })).toBeVisible();
     await expect(page.getByText("Acme Demo Co").first()).toBeVisible();
     await expect(page.getByRole("link", { name: /Overview/ })).toHaveAttribute("aria-current", "page");
 

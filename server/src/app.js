@@ -20,6 +20,8 @@ const { createAiSettingsRouter } = require("./routes/aiSettingsRoutes");
 const { createAiSettingsService } = require("./services/aiSettingsService");
 const { createCustomerRouter } = require("./routes/customerRoutes");
 const { createCustomerService } = require("./services/customerService");
+const { createChatRouter } = require("./routes/chatRoutes");
+const { createChatService } = require("./services/chatService");
 const { createAgentPortalRouter } = require("./routes/agentPortalRoutes");
 const { createAgentPortalService } = require("./services/agentPortalService");
 const { createPublicRouter } = require("./routes/publicRoutes");
@@ -48,6 +50,7 @@ function createApp(dependencies = {}) {
     dependencies.customerService || createCustomerService(dependencies);
   const agentPortalService =
     dependencies.agentPortalService || createAgentPortalService(dependencies);
+  const chatService = dependencies.chatService || createChatService(dependencies);
   const passport = dependencies.passport || configurePassport(dependencies);
 
   app.disable("x-powered-by");
@@ -102,6 +105,7 @@ function createApp(dependencies = {}) {
   );
   app.use("/api/company", createCompanyRouter(companyService));
   app.use("/api/agent", createAgentPortalRouter(agentPortalService));
+  app.use("/api/customer/chat", createChatRouter(chatService));
   app.use("/api/customer", createCustomerRouter(customerService));
   app.use(
     "/api/public",

@@ -14,7 +14,9 @@ async function loginAsCustomer(
 
 async function loginAsCaseyAndWait(page: Page) {
   await loginAsCustomer(page);
-  await expect(page).toHaveURL(/\/support\/tickets$/, { timeout: 10000 });
+  await expect(page).toHaveURL(/\/support$/, { timeout: 10000 });
+  await page.getByRole("link", { name: "My tickets" }).click();
+  await expect(page).toHaveURL(/\/support\/tickets$/);
   await expect(page.getByRole("heading", { name: "My tickets", level: 1 })).toBeVisible();
 }
 
@@ -174,8 +176,8 @@ test.describe("Customer portal", () => {
     await page.locator("#customer-confirm-password").fill("Customer@2026!");
     await page.getByRole("button", { name: "Create account" }).click();
 
-    await expect(page).toHaveURL(/\/support\/tickets$/, { timeout: 10000 });
-    await expect(page.getByText("You have not submitted any tickets yet")).toBeVisible();
+    await expect(page).toHaveURL(/\/support$/, { timeout: 10000 });
+    await expect(page.getByText("You haven't raised any tickets yet.")).toBeVisible();
 
     // Same email again
     await page.context().clearCookies();

@@ -6,6 +6,7 @@ import type {
   Ticket,
   TicketListFilters,
   TicketListResult,
+  TicketStats,
   UpdateTicketInput,
 } from "../types/tickets";
 import { ApiError, apiRequest } from "./apiClient";
@@ -87,6 +88,13 @@ export async function listAssignableAgents(): Promise<AssignableAgent[]> {
     { cache: "no-store" },
   );
   return response.data.agents;
+}
+
+export async function getTicketStats(): Promise<TicketStats> {
+  const response = await apiRequest<Envelope<TicketStats>>(`${BASE}/stats`, {
+    cache: "no-store",
+  });
+  return response.data;
 }
 
 export function getFieldErrors(error: unknown): FieldError[] {

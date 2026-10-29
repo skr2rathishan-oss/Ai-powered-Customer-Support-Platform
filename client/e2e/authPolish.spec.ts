@@ -4,8 +4,8 @@ import { test, expect, type Page } from "@playwright/test";
 const API = "http://127.0.0.1:5000";
 
 const ACCOUNTS = {
-  agent: { accountType: "individual", email: "agent@acme-demo.com", password: "CompanyAdmin@2026!", home: /\/agent\/tickets$/ },
-  customer: { accountType: "individual", email: "casey@customer.example", password: "Customer@2026!", home: /\/support\/tickets$/ },
+  agent: { accountType: "individual", email: "agent@acme-demo.com", password: "CompanyAdmin@2026!", home: /\/agent\/dashboard$/ },
+  customer: { accountType: "individual", email: "casey@customer.example", password: "Customer@2026!", home: /\/support$/ },
   company: { accountType: "company", email: "owner@acme-demo.com", password: "CompanyAdmin@2026!", home: /\/company\/dashboard$/ },
   admin: { accountType: "individual", email: "admin@supportpilot.com", password: "Admin@SupportPilot2026!", home: /\/admin\/dashboard$/ },
 } as const;
@@ -76,11 +76,11 @@ test.describe("Public and auth polish", () => {
   test("Google sign-in via the mock lands on the right home", async ({ page }) => {
     await page.goto("/login");
     await page.getByRole("button", { name: "Continue with Google" }).click();
-    await expect(page).toHaveURL(/\/support\/tickets$/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/support$/, { timeout: 15000 });
 
     await page.context().clearCookies();
     await page.goto(`${API}/api/auth/google?as=agent`);
-    await expect(page).toHaveURL(/\/agent\/tickets$/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/agent\/dashboard$/, { timeout: 15000 });
   });
 
   test("Google error codes show a message and the param is stripped", async ({ page }) => {
@@ -110,7 +110,7 @@ test.describe("Public and auth polish", () => {
   test("signed-in visitors are also redirected away from sign-up pages", async ({ page }) => {
     await signInViaApi(page, "customer");
     await page.goto("/register");
-    await expect(page).toHaveURL(/\/support\/tickets$/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/support$/, { timeout: 15000 });
   });
 
   test("a customer in the wrong area gets a link back to their workspace", async ({ page }) => {
@@ -121,11 +121,11 @@ test.describe("Public and auth polish", () => {
       await expect(page.getByRole("heading", { name: "Access Restricted" })).toBeVisible({ timeout: 15000 });
       const link = page.getByRole("link", { name: "Go to my workspace" });
       await expect(link).toBeVisible();
-      await expect(link).toHaveAttribute("href", "/support/tickets");
+      await expect(link).toHaveAttribute("href", "/support");
     }
 
     await page.getByRole("link", { name: "Go to my workspace" }).click();
-    await expect(page).toHaveURL(/\/support\/tickets$/);
+    await expect(page).toHaveURL(/\/support$/);
   });
 
   test("unknown URLs show the not-found page", async ({ page }) => {
@@ -138,6 +138,6 @@ test.describe("Public and auth polish", () => {
     await signInViaApi(page, "agent");
     await page.goto("/does-not-exist");
     await page.getByRole("link", { name: "Go to my workspace" }).click();
-    await expect(page).toHaveURL(/\/agent\/tickets$/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/agent\/dashboard$/, { timeout: 15000 });
   });
 });

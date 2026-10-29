@@ -36,6 +36,11 @@ function createTicketController(ticketService) {
     return send(response, 200, data);
   }
 
+  async function stats(request, response) {
+    const data = await ticketService.getTicketStats(request.auth);
+    return send(response, 200, data);
+  }
+
   async function listReplies(request, response) {
     const data = await ticketService.listReplies(
       request.auth,
@@ -53,7 +58,7 @@ function createTicketController(ticketService) {
     return send(response, 201, data);
   }
 
-  return { listReplies, createReply, list, get, create, update, listAgents };
+  return { listReplies, createReply, list, get, create, update, listAgents, stats };
 }
 
 module.exports = { createTicketController };

@@ -4,6 +4,8 @@ import { logout } from "../../services/auth";
 import { useCustomerPortal } from "./useCustomerPortal";
 
 const NAV_ITEMS = [
+  { label: "Dashboard", to: ROUTES.CUSTOMER_DASHBOARD, icon: "space_dashboard" },
+  { label: "Ask AI", to: ROUTES.CUSTOMER_CHAT, icon: "smart_toy" },
   { label: "My tickets", to: ROUTES.CUSTOMER_TICKETS, icon: "confirmation_number" },
   { label: "New ticket", to: ROUTES.CUSTOMER_NEW_TICKET, icon: "add_circle" },
   { label: "Help center", to: ROUTES.CUSTOMER_HELP, icon: "quiz" },

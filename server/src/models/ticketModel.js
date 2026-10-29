@@ -194,6 +194,67 @@ async function listAssignableAgents(companyId, options) {
   return rows;
 }
 
+// Aggregates for the company dashboard: status and priority breakdowns,
+// unassigned backlog, tickets created per day, and open work per agent
+async function getTicketStats(companyId, days, options) {
+  const pool = poolFrom(options);
+
+  const [statusRows] = await pool.execute(
+    `SELECT status, COUNT(*) AS total FROM tickets
+     WHERE company_id = ? GROUP BY status`,
+    [companyId],
+  );
+
+  const [priorityRows] = await pool.execute(
+    `SELECT priority, COUNT(*) AS total FROM tickets
+     WHERE company_id = ? AND status IN ('Open', 'In Progress')
+     GROUP BY priority`,
+    [companyId],
+  );
+
+  const [unassignedRows] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM tickets
+     WHERE company_id = ? AND status IN ('Open', 'In Progress')
+       AND assigned_agent_id IS NULL`,
+    [companyId],
+  );
+
+  const [dailyRows] = await pool.execute(
+    `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS total
+     FROM tickets
+     WHERE company_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     GROUP BY day`,
+    [companyId, String(days - 1)],
+  );
+
+  const [agentRows] = await pool.execute(
+    `SELECT
+       u.user_id AS userId,
+       u.first_name AS firstName,
+       u.last_name AS lastName,
+       u.online_status AS onlineStatus,
+       COUNT(t.ticket_id) AS openTickets
+     FROM users AS u
+     INNER JOIN roles AS r ON r.role_id = u.role_id
+     LEFT JOIN tickets AS t
+       ON t.assigned_agent_id = u.user_id AND t.company_id = u.company_id
+       AND t.status IN ('Open', 'In Progress')
+     WHERE u.company_id = ? AND r.role_name = 'Support Agent'
+       AND u.account_status = 'Active'
+     GROUP BY u.user_id, u.first_name, u.last_name, u.online_status
+     ORDER BY openTickets DESC, u.first_name`,
+    [companyId],
+  );
+
+  return {
+    statusRows,
+    priorityRows,
+    unassigned: Number(unassignedRows[0]?.total || 0),
+    dailyRows,
+    agentRows,
+  };
+}
+
 // Customer-scoped reads: company_id and customer_id are always the first two
 // parameters and are part of EVERY WHERE clause.
 async function findCustomerTicketById(companyId, customerId, ticketId, options) {
@@ -364,4 +425,5 @@ module.exports = {
   updateTicket,
   findAssignableAgent,
   listAssignableAgents,
+  getTicketStats,
 };

@@ -12,6 +12,7 @@ function createTicketRouter(ticketService) {
 
   // Static path first so it is not captured by /:ticketId
   router.get("/assignable-agents", asyncHandler(controller.listAgents));
+  router.get("/stats", asyncHandler(controller.stats));
   router.get("/", asyncHandler(controller.list));
   router.post("/", asyncHandler(controller.create));
   router.get("/:ticketId", asyncHandler(controller.get));

@@ -17,7 +17,7 @@ export function homeForRole(roleName?: string, accountType?: string): string {
   ) {
     return ROUTES.DASHBOARD_COMPANY;
   }
-  if (role === "customer") return ROUTES.CUSTOMER_TICKETS;
-  if (role === "support agent") return ROUTES.AGENT_TICKETS;
+  if (role === "customer") return ROUTES.CUSTOMER_DASHBOARD;
+  if (role === "support agent") return ROUTES.AGENT_DASHBOARD;
   return ROUTES.HOME;
 }

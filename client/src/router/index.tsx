@@ -14,12 +14,15 @@ import { CompanyTicketDetailPage } from "../pages/company/CompanyTicketDetailPag
 import { CustomerRegisterPage } from "../pages/auth/CustomerRegisterPage";
 import { CustomerRouteGuard } from "../components/customer/CustomerRouteGuard";
 import { CustomerLayout } from "../components/customer/CustomerLayout";
+import { CustomerDashboardPage } from "../pages/customer/CustomerDashboardPage";
+import { CustomerChatPage } from "../pages/customer/CustomerChatPage";
 import { CustomerTicketsPage } from "../pages/customer/CustomerTicketsPage";
 import { CustomerNewTicketPage } from "../pages/customer/CustomerNewTicketPage";
 import { CustomerTicketDetailPage } from "../pages/customer/CustomerTicketDetailPage";
 import { CustomerHelpPage } from "../pages/customer/CustomerHelpPage";
 import { AgentRouteGuard } from "../components/agent/AgentRouteGuard";
 import { AgentLayout } from "../components/agent/AgentLayout";
+import { AgentDashboardPage } from "../pages/agent/AgentDashboardPage";
 import { AgentQueuePage } from "../pages/agent/AgentQueuePage";
 import { AgentTicketDetailPage } from "../pages/agent/AgentTicketDetailPage";
 import { AuthCallbackPage } from "../pages/auth/AuthCallbackPage";
@@ -77,9 +80,10 @@ export function AppRouter() {
       <Route element={<CustomerRouteGuard />}>
         <Route element={<CustomerLayout />}>
           <Route
-            path="/support"
-            element={<Navigate to={ROUTES.CUSTOMER_TICKETS} replace />}
+            path={ROUTES.CUSTOMER_DASHBOARD}
+            element={<CustomerDashboardPage />}
           />
+          <Route path={ROUTES.CUSTOMER_CHAT} element={<CustomerChatPage />} />
           <Route
             path={ROUTES.CUSTOMER_TICKETS}
             element={<CustomerTicketsPage />}
@@ -99,10 +103,11 @@ export function AppRouter() {
       {/* Agent Portal (server-verified Support Agent only) */}
       <Route
         path={ROUTES.AGENT_HOME}
-        element={<Navigate to={ROUTES.AGENT_TICKETS} replace />}
+        element={<Navigate to={ROUTES.AGENT_DASHBOARD} replace />}
       />
       <Route element={<AgentRouteGuard />}>
         <Route element={<AgentLayout />}>
+          <Route path={ROUTES.AGENT_DASHBOARD} element={<AgentDashboardPage />} />
           <Route path={ROUTES.AGENT_TICKETS} element={<AgentQueuePage />} />
           <Route
             path={ROUTES.AGENT_TICKET_DETAIL}

@@ -11,6 +11,8 @@ process.env.JWT_SECRET =
   process.env.JWT_SECRET || "mock-server-secret-that-is-longer-than-32-chars";
 process.env.JWT_COOKIE_SECURE = "false";
 process.env.PORT = process.env.PORT || "5000";
+// The assistant answers by FAQ matching here, never by calling a paid API
+delete process.env.NVIDIA_API_KEY;
 
 const bcrypt = require("bcrypt");
 const express = require("express");
@@ -284,6 +286,41 @@ async function buildMockApp() {
           email: u.email,
           onlineStatus: u.onlineStatus,
         })),
+  };
+
+  // Same row shapes as the SQL aggregates in ticketModel.getTicketStats
+  ticketModel.getTicketStats = async (companyId, days) => {
+    const own = tickets.filter((t) => t.companyId === Number(companyId));
+    const active = own.filter((t) => t.status === "Open" || t.status === "In Progress");
+    const countBy = (list, key) =>
+      Object.entries(
+        list.reduce((acc, t) => ({ ...acc, [t[key]]: (acc[t[key]] || 0) + 1 }), {}),
+      ).map(([value, total]) => ({ [key]: value, total }));
+    const since = new Date();
+    since.setUTCDate(since.getUTCDate() - (days - 1));
+    const sinceDay = since.toISOString().slice(0, 10);
+
+    return {
+      statusRows: countBy(own, "status"),
+      priorityRows: countBy(active, "priority"),
+      unassigned: active.filter((t) => t.assignedAgentId === null).length,
+      dailyRows: countBy(
+        own
+          .map((t) => ({ day: t.createdAt.slice(0, 10) }))
+          .filter((t) => t.day >= sinceDay),
+        "day",
+      ),
+      agentRows: users
+        .filter((u) => isAssignableAgent(u, companyId))
+        .map((u) => ({
+          userId: u.userId,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          onlineStatus: u.onlineStatus,
+          openTickets: active.filter((t) => t.assignedAgentId === u.userId).length,
+        }))
+        .sort((a, b) => b.openTickets - a.openTickets),
+    };
   };
 
   // Agent-scoped ticket reads/writes: same scoping and Closed guard as the SQL
@@ -868,8 +905,88 @@ async function buildMockApp() {
     ttlMs: Number(process.env.MOCK_SETTINGS_TTL_MS || 500),
   });
 
+  // AI chat sessions: same scoping and shapes as models/chatModel.js
+  const chatSessions = [];
+  const chatMessages = [];
+  const chatModel = {
+    createSession: async (companyId, customerId) => {
+      const session = {
+        sessionId: chatSessions.length + 1,
+        companyId: Number(companyId),
+        customerId: Number(customerId),
+        status: "Active",
+        failedAnswers: 0,
+        ticketId: null,
+        createdAt: new Date().toISOString(),
+      };
+      chatSessions.push(session);
+      return { ...session };
+    },
+    findSession: async (companyId, customerId, sessionId) => {
+      const found = chatSessions.find(
+        (s) =>
+          s.companyId === Number(companyId) &&
+          s.customerId === Number(customerId) &&
+          s.sessionId === Number(sessionId),
+      );
+      return found ? { ...found } : null;
+    },
+    findActiveSession: async (companyId, customerId) => {
+      const found = [...chatSessions]
+        .reverse()
+        .find(
+          (s) =>
+            s.companyId === Number(companyId) &&
+            s.customerId === Number(customerId) &&
+            s.status === "Active",
+        );
+      return found ? { ...found } : null;
+    },
+    updateSession: async (sessionId, changes) => {
+      const session = chatSessions.find((s) => s.sessionId === Number(sessionId));
+      if (session) Object.assign(session, changes);
+    },
+    addMessage: async (sessionId, sender, body, confidence = null) => {
+      const message = {
+        messageId: chatMessages.length + 1,
+        sessionId: Number(sessionId),
+        sender,
+        body,
+        confidence,
+        createdAt: new Date().toISOString(),
+      };
+      chatMessages.push(message);
+      return { ...message };
+    },
+    listMessages: async (sessionId) =>
+      chatMessages.filter((m) => m.sessionId === Number(sessionId)).map((m) => ({ ...m })),
+    findLeastBusyAgent: async (companyId) => {
+      const load = (userId) =>
+        tickets.filter(
+          (t) =>
+            t.companyId === Number(companyId) &&
+            t.assignedAgentId === userId &&
+            (t.status === "Open" || t.status === "In Progress"),
+        ).length;
+      const agent = users
+        .filter((u) => isAssignableAgent(u, companyId))
+        .sort((a, b) => load(a.userId) - load(b.userId) || a.userId - b.userId)[0];
+      return agent
+        ? { userId: agent.userId, name: `${agent.firstName} ${agent.lastName}`.trim(), openTickets: load(agent.userId) }
+        : null;
+    },
+    countOutcomes: async (companyId) => {
+      const own = chatSessions.filter((s) => s.companyId === Number(companyId));
+      return {
+        resolved: own.filter((s) => s.status === "Resolved").length,
+        escalated: own.filter((s) => s.status === "Escalated").length,
+      };
+    },
+  };
+
   const realApp = createApp({
     runtimeSettings,
+    chatModel,
     isGoogleConfigured: () => process.env.MOCK_GOOGLE !== "false",
     userModel,
     companyModel,

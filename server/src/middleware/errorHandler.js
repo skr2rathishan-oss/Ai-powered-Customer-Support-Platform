@@ -1,3 +1,5 @@
+const { isTransientDbError } = require("../utils/dbErrors");
+
 function notFoundHandler(request, response) {
   return response.status(404).json({
     success: false,
@@ -10,6 +12,19 @@ function errorHandler(error, _request, response, _next) {
     return response.status(400).json({
       success: false,
       message: "Request body contains invalid JSON",
+    });
+  }
+
+  // The database could not be reached even after a retry: tell the client to
+  // try again rather than reporting a generic server error
+  if (!error.statusCode && isTransientDbError(error)) {
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[MySQL] Database unavailable: ${error.code || error.message}`);
+    }
+    return response.status(503).json({
+      success: false,
+      message: "The database is temporarily unavailable. Please try again in a moment.",
+      code: "DATABASE_UNAVAILABLE",
     });
   }
 
