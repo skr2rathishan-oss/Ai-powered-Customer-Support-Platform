@@ -5,50 +5,23 @@ const mongoose = require("mongoose");
 const { getMySQLPool } = require("../config/database");
 const { sendMail } = require("./emailService");
 const AppError = require("../utils/AppError");
+const {
+  SECRET_KEY_PATTERN,
+  SECTION_NAMES,
+  SETTINGS_SCHEMA,
+  buildDefaultSettings,
+  mergeSettings,
+} = require("./platformSettingsSchema");
+const { resolveEmail } = require("./runtimeSettings");
 
-// In-memory platform settings store (seeded with active production-ready defaults)
-let platformSettingsState = {
-  general: {
-    platformName: "SupportPilot Enterprise",
-    supportEmail: "support@supportpilot.com",
-    defaultCompanyStatus: "Active",
-    timezone: "UTC",
-    allowSelfRegistration: true,
-    platformNotice: "System performance is fully operational.",
-  },
-  security: {
-    jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1h",
-    minPasswordLength: 8,
-    requireSpecialChar: true,
-    googleOAuthEnabled: Boolean(process.env.GOOGLE_CLIENT_ID),
-    cookieSameSite: process.env.JWT_COOKIE_SAME_SITE || "lax",
-    cookieSecure: process.env.JWT_COOKIE_SECURE === "true",
-    sessionIdleTimeoutMinutes: 60,
-  },
-  email: {
-    smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
-    smtpPort: Number(process.env.SMTP_PORT || 587),
-    smtpUser: process.env.MAIL_USER || process.env.SMTP_USER || "rathishanmahendran027@gmail.com",
-    senderName: process.env.APP_NAME || "SupportPilot Security",
-    requireTls: true,
-    status: "Operational",
-  },
-  aiEngine: {
-    defaultModel: "gemini-1.5-pro",
-    availableModels: ["gemini-1.5-pro", "gemini-1.5-flash", "gpt-4o", "claude-3.5-sonnet"],
-    temperature: 0.2,
-    maxOutputTokens: 2048,
-    tokenQuotaPerTenantMonth: 500000,
-    sentimentAnalysisEnabled: true,
-    autoTicketCategorization: true,
-  },
-  infrastructure: {
-    environment: process.env.NODE_ENV || "development",
-    region: "ap-southeast-1",
-    databaseHost: process.env.MYSQL_HOST || "tidbcloud.com",
-    maintenanceMode: false,
-  },
-};
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function createAdminService(dependencies = {}) {
   const adminModel = dependencies.adminModel || defaultAdminModel;
@@ -57,6 +30,7 @@ function createAdminService(dependencies = {}) {
   const hashPassword =
     dependencies.hashPassword ||
     ((password) => bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS || 12)));
+  const runtimeSettings = dependencies.runtimeSettings;
 
   /**
    * Performs quick diagnostic health checks on key platform infrastructure components.
@@ -177,31 +151,107 @@ function createAdminService(dependencies = {}) {
   }
 
   /**
+   * Reads stored settings and merges them over the env-derived defaults.
+   */
+  async function loadSettings({ fallbackToDefaults = false } = {}) {
+    const defaults = buildDefaultSettings();
+    try {
+      const stored = await adminModel.getPlatformSettings();
+      return mergeSettings(defaults, stored);
+    } catch (error) {
+      if (fallbackToDefaults) return defaults;
+      throw error;
+    }
+  }
+
+  /**
    * Retrieves sanitized platform settings.
    */
   async function getPlatformSettings() {
+    // A broken settings store should not take the admin console down
+    const settings = await loadSettings({ fallbackToDefaults: true });
     return {
-      ...platformSettingsState,
+      ...settings,
       timestamp: new Date().toISOString(),
     };
   }
 
   /**
-   * Updates platform settings with validation.
+   * Updates platform settings with validation and persists them.
    */
-  async function updatePlatformSettings(patch = {}) {
-    platformSettingsState = {
-      general: { ...platformSettingsState.general, ...(patch.general || {}) },
-      security: { ...platformSettingsState.security, ...(patch.security || {}) },
-      email: { ...platformSettingsState.email, ...(patch.email || {}) },
-      aiEngine: { ...platformSettingsState.aiEngine, ...(patch.aiEngine || {}) },
-      infrastructure: { ...platformSettingsState.infrastructure, ...(patch.infrastructure || {}) },
-    };
+  async function updatePlatformSettings(patch, actor = null) {
+    if (!patch || typeof patch !== "object" || Array.isArray(patch)) {
+      throw new AppError("Settings payload must be an object", 422, "INVALID_SETTINGS", [
+        { field: "body", message: "must be an object" },
+      ]);
+    }
+
+    const current = await loadSettings();
+    const next = {};
+    const errors = [];
+
+    for (const section of SECTION_NAMES) next[section] = { ...current[section] };
+
+    for (const [section, values] of Object.entries(patch)) {
+      // The client echoes back the GET timestamp; it is not a setting
+      if (section === "timestamp") continue;
+
+      if (!SETTINGS_SCHEMA[section]) {
+        errors.push({ field: section, message: "Unknown settings section" });
+        continue;
+      }
+      if (!values || typeof values !== "object" || Array.isArray(values)) {
+        errors.push({ field: section, message: "must be an object" });
+        continue;
+      }
+
+      for (const [key, value] of Object.entries(values)) {
+        const field = `${section}.${key}`;
+        const rule = Object.prototype.hasOwnProperty.call(SETTINGS_SCHEMA[section], key)
+          ? SETTINGS_SCHEMA[section][key]
+          : null;
+
+        if (!rule) {
+          errors.push({
+            field,
+            message: SECRET_KEY_PATTERN.test(key)
+              ? "Secrets cannot be stored in platform settings"
+              : "Unknown setting",
+          });
+        } else if (rule.readOnly) {
+          // Echoing the current value back is fine; changing it is not
+          if (JSON.stringify(value) !== JSON.stringify(current[section][key])) {
+            errors.push({ field, message: "is read-only" });
+          }
+        } else if (!rule.validate(value, next)) {
+          errors.push({ field, message: rule.hint });
+        } else {
+          next[section][key] = value;
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new AppError("Invalid platform settings", 422, "INVALID_SETTINGS", errors);
+    }
+
+    // Browsers reject SameSite=None cookies that are not Secure
+    if (next.security.cookieSameSite === "none" && !next.security.cookieSecure) {
+      errors.push({
+        field: "security.cookieSecure",
+        message: "must be true when cookieSameSite is none",
+      });
+      throw new AppError("Invalid platform settings", 422, "INVALID_SETTINGS", errors);
+    }
+
+    const parsedActorId = Number.parseInt(actor?.userId, 10);
+    await adminModel.savePlatformSettings(next, Number.isFinite(parsedActorId) ? parsedActorId : null);
+    runtimeSettings?.invalidate();
 
     return {
       success: true,
       message: "Platform settings updated successfully.",
-      settings: platformSettingsState,
+      settings: next,
     };
   }
 
@@ -213,11 +263,16 @@ function createAdminService(dependencies = {}) {
       throw new AppError("Valid recipient email is required", 422, "INVALID_EMAIL");
     }
 
+    const { email: emailSettings } = await loadSettings({ fallbackToDefaults: true });
+    const { smtpHost, smtpPort } = emailSettings;
+    const smtp = resolveEmail({ email: emailSettings });
+
     const subject = `[Diagnostic] SupportPilot Platform Test Email - ${new Date().toISOString().slice(0, 10)}`;
     const text = `Hello Platform Administrator,\n\nThis is a verified test email sent from the SupportPilot Platform Settings test console.\n\nTimestamp: ${new Date().toISOString()}\nStatus: All email systems and SMTP relay on port 587 STARTTLS are operating normally.\n\nSupportPilot Security Systems`;
 
     const result = await mailSender({
       to: targetEmail.trim().toLowerCase(),
+      smtp,
       subject,
       text,
       html: `
@@ -231,8 +286,8 @@ function createAdminService(dependencies = {}) {
             <p style="margin: 6px 0 0 0; color: #15803d; font-size: 13px;">This test email verifies that outbound transactional emails, password resets, and notifications are delivering properly.</p>
           </div>
           <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #474555;">
-            <tr><td style="padding: 6px 0; font-weight: 600;">Server Host:</td><td>${platformSettingsState.email.smtpHost}</td></tr>
-            <tr><td style="padding: 6px 0; font-weight: 600;">Server Port:</td><td>${platformSettingsState.email.smtpPort} (STARTTLS)</td></tr>
+            <tr><td style="padding: 6px 0; font-weight: 600;">Server Host:</td><td>${escapeHtml(smtpHost)}</td></tr>
+            <tr><td style="padding: 6px 0; font-weight: 600;">Server Port:</td><td>${escapeHtml(smtpPort)} (STARTTLS)</td></tr>
             <tr><td style="padding: 6px 0; font-weight: 600;">Dispatched At:</td><td>${new Date().toUTCString()}</td></tr>
           </table>
         </div>

@@ -54,3 +54,16 @@ export type CompanyRegistrationPayload = Omit<
   CompanyRegistrationValues,
   "confirmPassword"
 >;
+
+export interface PasswordPolicy {
+  minPasswordLength: number;
+  requireSpecialChar: boolean;
+}
+
+export interface PlatformPublicSettings {
+  platformName: string;
+  platformNotice: string;
+  maintenanceMode: boolean;
+  allowSelfRegistration: boolean;
+  passwordPolicy: PasswordPolicy;
+}

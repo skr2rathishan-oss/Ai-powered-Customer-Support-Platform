@@ -5,16 +5,21 @@ const { authenticate } = require("../middleware/authenticate");
 const {
   validateSignInRequest,
   validateCompanyRegistrationRequest,
+  validateCustomerRegistrationRequest,
   validateForgotPasswordRequest,
   validateResetPasswordRequest,
 } = require("../middleware/validateRequest");
 const asyncHandler = require("../utils/asyncHandler");
 const defaultPassport = require("passport");
+const { isGoogleOAuthConfigured } = require("../config/googleOAuth");
+const { clientRedirect } = require("../utils/clientRedirect");
 
 function createAuthRouter(authService, dependencies = {}) {
   const router = express.Router();
   const controller = createAuthController(authService);
   const passport = dependencies.passport || defaultPassport;
+  const isGoogleConfigured =
+    dependencies.isGoogleConfigured || isGoogleOAuthConfigured;
 
   const registrationLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -66,7 +71,13 @@ function createAuthRouter(authService, dependencies = {}) {
     validateCompanyRegistrationRequest,
     asyncHandler(controller.registerCompany),
   );
-  router.post("/sign-out", controller.signOut);
+  router.post(
+    "/customer/register",
+    registrationLimiter,
+    validateCustomerRegistrationRequest,
+    asyncHandler(controller.registerCustomer),
+  );
+  router.post("/sign-out", asyncHandler(controller.signOut));
   router.get("/me", authenticate, controller.me);
 
   // Password Reset endpoints
@@ -91,33 +102,62 @@ function createAuthRouter(authService, dependencies = {}) {
     asyncHandler(controller.resetPassword),
   );
 
-  // Google OAuth 2.0 endpoints
+  // Which sign-in providers the UI may offer (no secrets).
+  router.get("/providers", (_request, response) => {
+    response.set("Cache-Control", "no-store");
+    return response.status(200).json({
+      success: true,
+      data: { google: Boolean(isGoogleConfigured()) },
+    });
+  });
+
+  // Google OAuth 2.0 endpoints (sign-in only for existing accounts)
   router.get(
     "/google",
-    passport.authenticate("google", {
-      scope: ["profile", "email"],
-      session: false,
-    }),
+    (_request, response, next) => {
+      if (!isGoogleConfigured()) {
+        return clientRedirect(response, "/login", {
+          error: "google_not_configured",
+        });
+      }
+      return next();
+    },
+    (request, response, next) =>
+      passport.authenticate("google", {
+        scope: ["profile", "email"],
+        session: false,
+      })(request, response, next),
   );
 
   router.get(
     "/google/callback",
     (req, res, next) => {
+      if (!isGoogleConfigured()) {
+        return clientRedirect(res, "/login", {
+          error: "google_not_configured",
+        });
+      }
+
       passport.authenticate(
         "google",
         { session: false },
-        (err, user) => {
-          if (err || !user) {
-            const clientOrigin =
-              process.env.CLIENT_ORIGIN || "http://localhost:5173";
-            return res.redirect(`${clientOrigin}/login?error=google_auth_failed`);
+        (err, user, info) => {
+          if (err) {
+            return clientRedirect(res, "/login", { error: "google_auth_failed" });
+          }
+          if (!user) {
+            // A provider-side failure (for example the user cancelled) carries
+            // info; a clean lookup miss does not.
+            return clientRedirect(res, "/login", {
+              error: info ? "google_auth_failed" : "google_no_account",
+            });
           }
           req.user = user;
           next();
         },
       )(req, res, next);
     },
-    controller.googleCallback,
+    asyncHandler(controller.googleCallback),
   );
 
   return router;

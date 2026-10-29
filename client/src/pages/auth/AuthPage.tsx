@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { AuthShell } from "../../components/auth/AuthShell";
 import { AuthToggle } from "../../components/auth/AuthToggle";
 import { ForgotPasswordForm } from "../../components/auth/ForgotPasswordForm";
 import { LoginForm } from "../../components/auth/LoginForm";
+import { homeForRole } from "../../router/roleRedirect";
 import { ROUTES } from "../../router/routes";
-import { loginCompany, loginIndividual } from "../../services/auth";
-import { API_BASE_URL, apiRequest } from "../../services/apiClient";
+import {
+  getAuthProviders,
+  loginCompany,
+  loginIndividual,
+} from "../../services/auth";
+import { API_BASE_URL } from "../../services/apiClient";
+import { useRedirectIfSignedIn } from "../../router/useRedirectIfSignedIn";
 import type {
   LoginFormErrors,
   LoginFormValues,
@@ -22,6 +28,23 @@ const STORAGE_KEYS: Record<LoginMode, string> = {
   individual: "supportpilot.rememberedEmail.individual",
   company: "supportpilot.rememberedEmail.company",
 };
+
+function googleErrorMessage(code: string): string {
+  switch (code) {
+    case "google_auth_failed":
+      return "Google sign-in failed or was cancelled. Please try again.";
+    case "google_no_account":
+      return "No SupportPilot account found for that Google email. Register first, then sign in with Google.";
+    case "google_inactive":
+      return "This account is not active.";
+    case "google_role_unsupported":
+      return "Google sign-in is not available for this account type. Use company sign-in.";
+    case "google_not_configured":
+      return "Google sign-in is not available right now.";
+    default:
+      return "Sign-in failed. Please try again.";
+  }
+}
 
 function createInitialValues(mode: LoginMode): LoginFormValues {
   const rememberedEmail = localStorage.getItem(STORAGE_KEYS[mode]) ?? "";
@@ -66,7 +89,9 @@ interface AuthPageProps {
 
 export function AuthPage({ mode: activeMode }: AuthPageProps) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [googleAvailable, setGoogleAvailable] = useState(false);
+  useRedirectIfSignedIn();
   const [forms, setForms] = useState<Record<LoginMode, LoginFormValues>>(() => ({
     individual: createInitialValues("individual"),
     company: createInitialValues("company"),
@@ -88,66 +113,34 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
   });
   const [isForgotPassword, setIsForgotPassword] = useState(false);
 
-  // Handle redirect from Google OAuth Callback
+  // Surface Google sign-in failures once, then strip the param so a refresh
+  // does not show the banner again.
   useEffect(() => {
-    if (searchParams.get("authenticated") === "true") {
-      apiRequest<{ data?: { user: { email: string; roleName?: string; accountType?: string } } }>("/api/auth/me")
-        .then((response) => {
-          const user = response?.data?.user;
-          if (user) {
-            setSuccessMessages((current) => ({
-              ...current,
-              individual: `Welcome back, ${user.email}! (Signed in via Google)`,
-            }));
-            window.dispatchEvent(
-              new CustomEvent("supportpilot:authenticated", {
-                detail: { mode: "individual", user },
-              }),
-            );
+    const errorCode = searchParams.get("error");
+    if (!errorCode) return;
 
-            const role = (user.roleName || "").toLowerCase().trim();
-            if (role === "platform admin" || role.includes("platform")) {
-              navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
-            } else if (user.accountType === "company" || role === "company admin" || role.includes("company")) {
-              navigate(ROUTES.DASHBOARD_COMPANY, { replace: true });
-            } else {
-              navigate(ROUTES.HOME, { replace: true });
-            }
-          }
-        })
-        .catch(() => {
-          setSuccessMessages((current) => ({
-            ...current,
-            individual: "Signed in successfully via Google.",
-          }));
-        });
-    } else if (searchParams.get("error")) {
-      setSubmitErrors((current) => ({
-        ...current,
-        individual:
-          "Google authentication failed or was cancelled. Please try again.",
-      }));
-    }
-  }, [searchParams, navigate]);
+    const message = googleErrorMessage(errorCode);
+    setSubmitErrors({ individual: message, company: message });
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("error");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
 
-  // If already authenticated as Platform Admin on mount, automatically redirect
+  // Only offer Google when the server says it is configured.
   useEffect(() => {
-    if (!searchParams.get("authenticated") && !searchParams.get("error")) {
-      apiRequest<{ data?: { user: { email: string; roleName?: string; accountType?: string } } }>("/api/auth/me")
-        .then((response) => {
-          const user = response?.data?.user;
-          if (user) {
-            const role = (user.roleName || "").toLowerCase().trim();
-            if (role === "platform admin" || role.includes("platform")) {
-              navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
-            }
-          }
-        })
-        .catch(() => {
-          // Not logged in; remain on login form
-        });
-    }
-  }, [navigate, searchParams]);
+    let active = true;
+    void getAuthProviders().then((providers) => {
+      if (active) setGoogleAvailable(providers.google);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const anyLoading = useMemo(
     () => loading.individual || loading.company,
@@ -217,14 +210,10 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
         }),
       );
 
-      const role = (result.user?.roleName || "").toLowerCase().trim();
-      if (role === "platform admin" || role.includes("platform")) {
-        navigate(ROUTES.ADMIN_DASHBOARD, { replace: true });
-      } else if (mode === "company" || role === "company admin" || role.includes("company")) {
-        navigate(ROUTES.DASHBOARD_COMPANY, { replace: true });
-      } else {
-        navigate(ROUTES.HOME, { replace: true });
-      }
+      navigate(
+        homeForRole(result.user?.roleName, mode === "company" ? "company" : undefined),
+        { replace: true },
+      );
     } catch (error) {
       setSubmitErrors((current) => ({
         ...current,
@@ -271,27 +260,31 @@ export function AuthPage({ mode: activeMode }: AuthPageProps) {
             />
           </div>
 
-          <div className="divider" aria-hidden="true">
-            <span>or</span>
-          </div>
+          {googleAvailable && (
+            <>
+              <div className="divider" aria-hidden="true">
+                <span>or</span>
+              </div>
 
-          <button
-            className="google-button"
-            type="button"
-            onClick={handleGoogleSignIn}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.3h5.4a4.6 4.6 0 01-2 3v2.8h3.3c1.9-1.8 2.9-4.4 2.9-7.9z" />
-              <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.7-2.4l-3.3-2.8c-.9.6-2.1 1-3.4 1a5.9 5.9 0 01-5.5-4.1H3.1v2.9A10 10 0 0012 22z" />
-              <path fill="#FBBC05" d="M6.5 13.7a6 6 0 010-3.8V7H3.1a10 10 0 000 9.6l3.4-2.9z" />
-              <path fill="#EA4335" d="M12 5.8c1.5 0 2.8.5 3.9 1.5l2.9-2.9A9.7 9.7 0 0012 2a10 10 0 00-8.9 5l3.4 2.9A5.9 5.9 0 0112 5.8z" />
-            </svg>
-            Continue with Google
-          </button>
+              <button
+                className="google-button"
+                type="button"
+                onClick={handleGoogleSignIn}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.3h5.4a4.6 4.6 0 01-2 3v2.8h3.3c1.9-1.8 2.9-4.4 2.9-7.9z" />
+                  <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.7-2.4l-3.3-2.8c-.9.6-2.1 1-3.4 1a5.9 5.9 0 01-5.5-4.1H3.1v2.9A10 10 0 0012 22z" />
+                  <path fill="#FBBC05" d="M6.5 13.7a6 6 0 010-3.8V7H3.1a10 10 0 000 9.6l3.4-2.9z" />
+                  <path fill="#EA4335" d="M12 5.8c1.5 0 2.8.5 3.9 1.5l2.9-2.9A9.7 9.7 0 0012 2a10 10 0 00-8.9 5l3.4 2.9A5.9 5.9 0 0112 5.8z" />
+                </svg>
+                Continue with Google
+              </button>
+            </>
+          )}
 
           <p className="legal-copy">
-            By continuing, you agree to SupportPilot’s <a href="#terms">Terms of Service</a>{" "}
-            and <a href="#privacy">Privacy Policy</a>.
+            By continuing, you agree to SupportPilot’s <Link to={ROUTES.TERMS}>Terms of Service</Link>{" "}
+            and <Link to={ROUTES.PRIVACY}>Privacy Policy</Link>.
           </p>
         </>
       )}

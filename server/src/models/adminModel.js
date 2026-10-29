@@ -405,6 +405,43 @@ async function deleteCompany(companyId) {
   }
 }
 
+/**
+ * Reads the stored platform settings document, or null if none was saved yet.
+ */
+async function getPlatformSettings() {
+  const pool = getMySQLPool();
+  const [rows] = await pool.query(
+    `SELECT settings_json FROM platform_settings WHERE settings_id = 1`,
+  );
+
+  if (!rows || rows.length === 0) return null;
+
+  // JSON columns may come back already parsed; LONGTEXT comes back as a string
+  const raw = rows[0].settings_json;
+  if (raw && typeof raw === "object") return raw;
+  if (typeof raw !== "string") return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+/**
+ * Inserts or replaces the single platform settings row.
+ */
+async function savePlatformSettings(settings, updatedBy = null) {
+  const pool = getMySQLPool();
+  await pool.execute(
+    `INSERT INTO platform_settings (settings_id, settings_json, updated_by)
+     VALUES (1, ?, ?)
+     ON DUPLICATE KEY UPDATE settings_json = VALUES(settings_json), updated_by = VALUES(updated_by)`,
+    [JSON.stringify(settings), updatedBy],
+  );
+}
+
 module.exports = {
   getPlatformStats,
   getRegistrationTrends,
@@ -414,5 +451,7 @@ module.exports = {
   getCompanyById,
   updateCompanyStatus,
   deleteCompany,
+  getPlatformSettings,
+  savePlatformSettings,
 };
 

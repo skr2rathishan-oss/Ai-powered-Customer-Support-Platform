@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { subscribeNewsletter } from "../../services/leads";
 import { ROUTES } from "../../router/routes";
+import { usePlatformSettings } from "../common/platformSettingsContext";
 
 export function Footer() {
+  const { allowSelfRegistration } = usePlatformSettings();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState("");
@@ -48,31 +50,6 @@ export function Footer() {
             The enterprise-grade platform for modern, human-centric, AI-powered
             customer support operations.
           </p>
-
-          {/* Social Icons */}
-          <div className="flex gap-3 mb-8">
-            <a
-              href="#hero"
-              aria-label="SupportPilot Web"
-              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-colors text-white"
-            >
-              <span className="material-symbols-outlined text-sm">public</span>
-            </a>
-            <a
-              href="#faq"
-              aria-label="SupportPilot Community"
-              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-colors text-white"
-            >
-              <span className="material-symbols-outlined text-sm">forum</span>
-            </a>
-            <a
-              href="#pricing"
-              aria-label="Share SupportPilot"
-              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-colors text-white"
-            >
-              <span className="material-symbols-outlined text-sm">share</span>
-            </a>
-          </div>
 
           {/* Newsletter Box */}
           <div className="max-w-sm">
@@ -132,14 +109,16 @@ export function Footer() {
                 Pricing
               </a>
             </li>
-            <li>
-              <Link
-                className="hover:text-primary transition-colors"
-                to={ROUTES.REGISTER_COMPANY}
-              >
-                Free Trial
-              </Link>
-            </li>
+            {allowSelfRegistration && (
+              <li>
+                <Link
+                  className="hover:text-primary transition-colors"
+                  to={ROUTES.REGISTER_COMPANY}
+                >
+                  Free Trial
+                </Link>
+              </li>
+            )}
           </ul>
         </div>
 
@@ -159,11 +138,16 @@ export function Footer() {
                 FAQ
               </a>
             </li>
-            <li>
-              <a className="hover:text-primary transition-colors" href="#hero">
-                API Docs
-              </a>
-            </li>
+            {allowSelfRegistration && (
+              <li>
+                <Link
+                  className="hover:text-primary transition-colors"
+                  to={ROUTES.REGISTER_CUSTOMER}
+                >
+                  Customer Sign Up
+                </Link>
+              </li>
+            )}
             <li>
               <Link className="hover:text-primary transition-colors" to={ROUTES.LOGIN}>
                 Account Portal
@@ -179,26 +163,31 @@ export function Footer() {
           </h5>
           <ul className="space-y-3.5 text-sm text-white/70">
             <li>
-              <a className="hover:text-primary transition-colors" href="#hero">
-                About Us
-              </a>
-            </li>
-            <li>
               <a className="hover:text-primary transition-colors" href="#pricing">
                 Enterprise
               </a>
             </li>
-            <li>
-              <Link
-                className="hover:text-primary transition-colors"
-                to={ROUTES.REGISTER_COMPANY}
-              >
-                Join SupportPilot
-              </Link>
-            </li>
+            {allowSelfRegistration && (
+              <li>
+                <Link
+                  className="hover:text-primary transition-colors"
+                  to={ROUTES.REGISTER_COMPANY}
+                >
+                  Join SupportPilot
+                </Link>
+              </li>
+            )}
             <li>
               <Link className="hover:text-primary transition-colors" to={ROUTES.LOGIN}>
                 Sign In
+              </Link>
+            </li>
+            <li>
+              <Link
+                className="hover:text-primary transition-colors"
+                to={ROUTES.LOGIN_COMPANY}
+              >
+                Company Sign In
               </Link>
             </li>
           </ul>
@@ -209,18 +198,15 @@ export function Footer() {
       <div className="max-w-6xl mx-auto px-6 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between text-xs text-white/50 gap-4">
         <p>© 2026 SupportPilot AI Inc. All rights reserved.</p>
         <div className="flex gap-6">
-          <a className="hover:text-white transition-colors" href="#hero">
+          <Link className="hover:text-white transition-colors" to={ROUTES.TERMS}>
             Terms of Service
-          </a>
-          <a className="hover:text-white transition-colors" href="#hero">
+          </Link>
+          <Link className="hover:text-white transition-colors" to={ROUTES.PRIVACY}>
             Privacy Policy
-          </a>
-          <a className="hover:text-white transition-colors" href="#hero">
+          </Link>
+          <Link className="hover:text-white transition-colors" to={ROUTES.PRIVACY}>
             Security
-          </a>
-          <a className="hover:text-white transition-colors" href="#hero">
-            Status
-          </a>
+          </Link>
         </div>
       </div>
     </footer>

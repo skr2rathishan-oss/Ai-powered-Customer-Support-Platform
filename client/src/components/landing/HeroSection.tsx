@@ -1,11 +1,13 @@
 import { Link } from "react-router";
 import { ROUTES } from "../../router/routes";
+import { usePlatformSettings } from "../common/platformSettingsContext";
 
 interface HeroSectionProps {
   onWatchDemo: (title?: string) => void;
 }
 
 export function HeroSection({ onWatchDemo }: HeroSectionProps) {
+  const { allowSelfRegistration } = usePlatformSettings();
   return (
     <section
       className="relative min-h-[95vh] flex flex-col items-center justify-center pt-36 pb-20 overflow-hidden"
@@ -52,13 +54,15 @@ export function HeroSection({ onWatchDemo }: HeroSectionProps) {
           className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16 reveal"
           style={{ transitionDelay: "300ms" }}
         >
-          <Link
-            to={ROUTES.REGISTER_COMPANY}
-            className="magnetic-btn w-full sm:w-auto bg-on-surface text-white px-9 py-4 rounded-xl text-base font-bold hover:bg-black/90 transition-all shadow-xl shadow-on-surface/10 flex items-center justify-center gap-2"
-          >
-            <span>Start Free Trial</span>
-            <span className="material-symbols-outlined text-lg">arrow_forward</span>
-          </Link>
+          {allowSelfRegistration && (
+            <Link
+              to={ROUTES.REGISTER_COMPANY}
+              className="magnetic-btn w-full sm:w-auto bg-on-surface text-white px-9 py-4 rounded-xl text-base font-bold hover:bg-black/90 transition-all shadow-xl shadow-on-surface/10 flex items-center justify-center gap-2"
+            >
+              <span>Start Free Trial</span>
+              <span className="material-symbols-outlined text-lg">arrow_forward</span>
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => onWatchDemo("SupportPilot Platform Overview")}

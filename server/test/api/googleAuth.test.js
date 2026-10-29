@@ -67,7 +67,7 @@ test("Google OAuth 2.0 End-to-End Authentication & Account Linking Tests", async
       passwordHash: "$2b$10$hashed_password_for_sarah",
       onlineStatus: "Offline",
       accountStatus: "Active",
-      roleName: "Agent",
+      roleName: "Support Agent",
     },
   ];
 
@@ -117,7 +117,7 @@ test("Google OAuth 2.0 End-to-End Authentication & Account Linking Tests", async
           passwordHash: null,
           onlineStatus: "Offline",
           accountStatus: "Active",
-          roleName: "Agent",
+          roleName: "Support Agent",
         };
         mockDatabaseUsers.push(matchedUser);
       }
@@ -201,7 +201,7 @@ test("Google OAuth 2.0 End-to-End Authentication & Account Linking Tests", async
       );
       assert.equal(
         linkedUser.roleName,
-        "Agent",
+        "Support Agent",
         "Preserves existing role and permissions",
       );
     },
@@ -221,7 +221,7 @@ test("Google OAuth 2.0 End-to-End Authentication & Account Linking Tests", async
                 email: "sarah.agent@company.com",
                 firstName: "Sarah",
                 lastName: "Jenkins",
-                roleName: "Agent",
+                roleName: "Support Agent",
                 onlineStatus: "Offline",
               };
               return callback(null, mockGoogleUser);
@@ -247,7 +247,7 @@ test("Google OAuth 2.0 End-to-End Authentication & Account Linking Tests", async
         assert.equal(callbackResponse.status, 302);
         assert.equal(
           callbackResponse.headers.get("location"),
-          "http://localhost:5173/login?authenticated=true",
+          "http://localhost:5173/auth/callback",
         );
 
         const cookies = parseCookies(callbackResponse);
@@ -348,4 +348,119 @@ test("Google OAuth 2.0 End-to-End Authentication & Account Linking Tests", async
       }
     },
   );
+});
+
+function fakePassport(result) {
+  return {
+    initialize: () => (_req, _res, next) => next(),
+    authenticate: (_strategy, _options, callback) => (req, res, next) => {
+      if (typeof callback === "function") {
+        return callback(result.err || null, result.user, result.info);
+      }
+      return next();
+    },
+  };
+}
+
+function googleUser(overrides = {}) {
+  return {
+    userId: 301,
+    googleId: "g-301",
+    email: "someone@example.com",
+    firstName: "Some",
+    lastName: "One",
+    roleName: "Customer",
+    accountStatus: "Active",
+    onlineStatus: "Offline",
+    ...overrides,
+  };
+}
+
+async function callGoogleCallback(result, extra = {}) {
+  const server = await startTestServer({
+    passport: fakePassport(result),
+    isGoogleConfigured: () => true,
+    ...extra,
+  });
+  try {
+    const response = await fetch(`${server.baseUrl}/api/auth/google/callback?code=x`, {
+      redirect: "manual",
+    });
+    return { response, cookies: parseCookies(response) };
+  } finally {
+    await server.close();
+  }
+}
+
+test("GET /api/auth/providers reports google availability without secrets", async () => {
+  for (const configured of [true, false]) {
+    const server = await startTestServer({ isGoogleConfigured: () => configured });
+    try {
+      const response = await fetch(`${server.baseUrl}/api/auth/providers`);
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get("cache-control"), /no-store/);
+      const body = await response.json();
+      assert.deepEqual(body, { success: true, data: { google: configured } });
+      const aliasResponse = await fetch(`${server.baseUrl}/auth/providers`);
+      assert.equal(aliasResponse.status, 200);
+    } finally {
+      await server.close();
+    }
+  }
+});
+
+test("GET /api/auth/google redirects to the login error when Google is not configured", async () => {
+  const server = await startTestServer({ isGoogleConfigured: () => false });
+  try {
+    const response = await fetch(`${server.baseUrl}/api/auth/google`, {
+      redirect: "manual",
+    });
+    assert.equal(response.status, 302);
+    assert.equal(
+      response.headers.get("location"),
+      "http://localhost:5173/login?error=google_not_configured",
+    );
+  } finally {
+    await server.close();
+  }
+});
+
+test("Google callback signs in Customer, Support Agent and Platform Admin via cookie only", async () => {
+  for (const roleName of ["Customer", "Support Agent", "Platform Admin"]) {
+    const { response, cookies } = await callGoogleCallback({
+      user: googleUser({ roleName }),
+    });
+    assert.equal(response.status, 302);
+    const location = response.headers.get("location");
+    assert.equal(location, "http://localhost:5173/auth/callback");
+    assert.doesNotMatch(location, /token/i);
+    const authCookie = cookies.find((c) => c.name === "supportpilot_access");
+    assert.ok(authCookie, `cookie set for ${roleName}`);
+    assert.ok(authCookie.attributes.httponly);
+    const payload = JSON.parse(
+      Buffer.from(authCookie.value.split(".")[1], "base64url").toString(),
+    );
+    assert.equal(payload.roleName, roleName);
+  }
+});
+
+test("Google callback refuses inactive, unsupported, unknown and failed sign-ins without a cookie", async () => {
+  const cases = [
+    [{ user: googleUser({ accountStatus: "Inactive" }) }, "google_inactive"],
+    [{ user: googleUser({ roleName: "Company Admin" }) }, "google_role_unsupported"],
+    [{ user: googleUser({ roleName: undefined }) }, "google_role_unsupported"],
+    [{ user: false }, "google_no_account"],
+    [{ user: false, info: { message: "denied" } }, "google_auth_failed"],
+    [{ err: new Error("boom"), user: null }, "google_auth_failed"],
+  ];
+
+  for (const [result, code] of cases) {
+    const { response, cookies } = await callGoogleCallback(result);
+    assert.equal(response.status, 302);
+    assert.equal(
+      response.headers.get("location"),
+      `http://localhost:5173/login?error=${code}`,
+    );
+    assert.equal(cookies.length, 0, `no cookie for ${code}`);
+  }
 });

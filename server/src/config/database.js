@@ -66,6 +66,12 @@ function getMySQLPool() {
 
 async function initMySQLSchema() {
   const pool = getMySQLPool();
+  await ensurePlatformSettingsTable(pool);
+  await ensureTicketsTable(pool);
+  await ensureTicketRepliesTable(pool);
+  await ensureFaqsTable(pool);
+  await ensureCompanyAiSettingsTable(pool);
+  await ensureCustomerSupport(pool);
   try {
     const [columns] = await pool.query(
       "SHOW COLUMNS FROM users LIKE 'google_id'",
@@ -108,6 +114,172 @@ async function initMySQLSchema() {
   } catch (error) {
     if (process.env.NODE_ENV !== "test") {
       console.warn("Schema initialization notice:", error.message);
+    }
+  }
+}
+
+async function ensurePlatformSettingsTable(pool) {
+  try {
+    // Single-row table (settings_id is always 1); no seed row, defaults apply until first save
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS platform_settings (
+        settings_id TINYINT PRIMARY KEY,
+        settings_json LONGTEXT NOT NULL,
+        updated_by INT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Platform settings schema notice:", error.message);
+    }
+  }
+}
+
+async function ensureTicketsTable(pool) {
+  try {
+    // No foreign keys: tenancy (company_id, assigned_agent_id) is enforced in the
+    // application so a column type mismatch can never silently skip table creation
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tickets (
+        ticket_id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        customer_id INT NULL,
+        requester_name VARCHAR(150) NULL,
+        requester_email VARCHAR(255) NULL,
+        subject VARCHAR(200) NOT NULL,
+        description TEXT NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'Open',
+        priority VARCHAR(20) NOT NULL DEFAULT 'Medium',
+        assigned_agent_id INT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        resolved_at DATETIME NULL,
+        INDEX idx_tickets_company_status (company_id, status, created_at),
+        INDEX idx_tickets_company_priority (company_id, priority),
+        INDEX idx_tickets_company_agent (company_id, assigned_agent_id),
+        INDEX idx_tickets_company_resolved (company_id, resolved_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Tickets schema notice:", error.message);
+    }
+  }
+}
+
+async function ensureTicketRepliesTable(pool) {
+  try {
+    // No foreign keys, same reasoning as tickets. author_role/author_name are
+    // snapshots so history survives role or account changes.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ticket_replies (
+        reply_id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        ticket_id INT NOT NULL,
+        author_id INT NULL,
+        author_role VARCHAR(20) NOT NULL,
+        author_name VARCHAR(150) NULL,
+        is_internal TINYINT(1) NOT NULL DEFAULT 0,
+        body TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ticket_replies_ticket (company_id, ticket_id, created_at, reply_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Ticket replies schema notice:", error.message);
+    }
+  }
+}
+
+async function ensureFaqsTable(pool) {
+  try {
+    // No foreign key on company_id, same reasoning as tickets: tenancy is
+    // enforced in every WHERE and a type mismatch must not skip table creation
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS faqs (
+        faq_id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        question VARCHAR(300) NOT NULL,
+        answer TEXT NOT NULL,
+        category VARCHAR(60) NULL,
+        is_published TINYINT(1) NOT NULL DEFAULT 0,
+        sort_order INT NOT NULL DEFAULT 0,
+        created_by INT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_faqs_company_order (company_id, sort_order, faq_id),
+        INDEX idx_faqs_company_published (company_id, is_published),
+        INDEX idx_faqs_company_category (company_id, category)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("FAQs schema notice:", error.message);
+    }
+  }
+}
+
+async function ensureCompanyAiSettingsTable(pool) {
+  try {
+    // No foreign key on company_id, same reasoning as tickets/faqs
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS company_ai_settings (
+        settings_id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        enabled TINYINT(1) NOT NULL DEFAULT 0,
+        assistant_name VARCHAR(40) NOT NULL DEFAULT 'SupportPilot Assistant',
+        tone VARCHAR(20) NOT NULL DEFAULT 'professional',
+        greeting VARCHAR(300) NOT NULL DEFAULT '',
+        answer_from_faqs_only TINYINT(1) NOT NULL DEFAULT 1,
+        confidence_threshold TINYINT UNSIGNED NOT NULL DEFAULT 70,
+        escalate_after_failures TINYINT UNSIGNED NOT NULL DEFAULT 2,
+        fallback_message VARCHAR(300) NOT NULL DEFAULT '',
+        custom_instructions TEXT NULL,
+        updated_by INT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_company_ai_settings_company (company_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("AI settings schema notice:", error.message);
+    }
+  }
+}
+
+async function ensureCustomerSupport(pool) {
+  // The roles table shape beyond role_name is unknown, so this is best effort.
+  // Deployments may need to create the Customer role row manually.
+  try {
+    await pool.query(
+      `INSERT INTO roles (role_name)
+       SELECT 'Customer' FROM DUAL
+       WHERE NOT EXISTS (SELECT 1 FROM roles WHERE role_name = 'Customer')`,
+    );
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn(
+        "Customer role could not be created automatically; add a 'Customer' row to roles manually:",
+        error.message,
+      );
+    }
+  }
+
+  try {
+    const [indexes] = await pool.query(
+      "SHOW INDEX FROM tickets WHERE Key_name = 'idx_tickets_customer'",
+    );
+    if (indexes.length === 0) {
+      await pool.query(
+        "ALTER TABLE tickets ADD INDEX idx_tickets_customer (company_id, customer_id, created_at)",
+      );
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Customer tickets index notice:", error.message);
     }
   }
 }

@@ -3,9 +3,17 @@ const bcrypt = require("bcrypt");
 const userModel = require("../models/userModel");
 const companyModel = require("../models/companyModel");
 const tokenModel = require("../models/tokenModel");
+const defaultCustomerModel = require("../models/customerModel");
 const AppError = require("../utils/AppError");
 const { createAccessToken } = require("../utils/token");
 const { sendPasswordResetEmail } = require("./emailService");
+const { createStaticRuntimeSettings } = require("./runtimeSettings");
+const {
+  isPasswordAllowed,
+  passwordPolicyMessage,
+} = require("../validators/authValidator");
+
+const PLATFORM_ADMIN_ROLE = "Platform Admin";
 
 // Comparing against a valid fallback hash reduces email-enumeration timing leaks.
 const DUMMY_PASSWORD_HASH =
@@ -19,19 +27,61 @@ function createAuthService(dependencies = {}) {
   const users = dependencies.userModel || userModel;
   const companies = dependencies.companyModel || companyModel;
   const tokens = dependencies.tokenModel || tokenModel;
+  const customers = dependencies.customerModel || defaultCustomerModel;
   const mailSender =
     dependencies.sendPasswordResetEmail || sendPasswordResetEmail;
   const createToken = dependencies.createAccessToken || createAccessToken;
   const hashPassword =
     dependencies.hashPassword ||
     ((password) => bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS || 12)));
-  const initialCompanyStatus =
-    dependencies.initialCompanyStatus ||
-    process.env.COMPANY_REGISTRATION_STATUS ||
-    "Active";
+  const runtimeSettings =
+    dependencies.runtimeSettings || createStaticRuntimeSettings();
 
-  function generateToken(user) {
-    return createToken(user);
+  // Stored security settings, or undefined so token/cookie helpers use env.
+  async function resolveSecurity() {
+    try {
+      return await runtimeSettings.getSecurity();
+    } catch (_error) {
+      return {};
+    }
+  }
+
+  async function getCookieOptions() {
+    return (await resolveSecurity()).cookieOptions;
+  }
+
+  async function generateToken(user) {
+    const { jwtExpiresIn } = await resolveSecurity();
+    return createToken(user, { expiresIn: jwtExpiresIn });
+  }
+
+  async function assertSelfRegistrationOpen() {
+    const settings = await runtimeSettings.get();
+    if (settings.general.allowSelfRegistration === false) {
+      throw new AppError(
+        "Self-registration is currently disabled",
+        403,
+        "REGISTRATION_DISABLED",
+      );
+    }
+    return settings;
+  }
+
+  function maintenanceError() {
+    return new AppError(
+      "The platform is under maintenance. Please try again shortly.",
+      503,
+      "MAINTENANCE_MODE",
+    );
+  }
+
+  // Whether this role may start a session while maintenance mode is on.
+  async function isSignInBlockedByMaintenance(roleName) {
+    const settings = await runtimeSettings.get();
+    return (
+      settings.infrastructure.maintenanceMode === true &&
+      roleName !== PLATFORM_ADMIN_ROLE
+    );
   }
 
   async function signIn({ accountType, email, password }) {
@@ -96,13 +146,20 @@ function createAuthService(dependencies = {}) {
             roleName: account.roleName,
           };
 
+    if (await isSignInBlockedByMaintenance(safeUser.roleName)) {
+      throw maintenanceError();
+    }
+
     return {
       user: safeUser,
-      accessToken: createToken(safeUser),
+      accessToken: await generateToken(safeUser),
     };
   }
 
   async function registerCompany(registration) {
+    const settings = await assertSelfRegistrationOpen();
+    const initialCompanyStatus =
+      dependencies.initialCompanyStatus || settings.general.defaultCompanyStatus;
     const passwordHash = await hashPassword(registration.password);
     const account = await companies.createRegistration({
       ...registration,
@@ -125,11 +182,54 @@ function createAuthService(dependencies = {}) {
 
     return {
       user: safeUser,
-      accessToken: createToken(safeUser),
+      accessToken: await generateToken(safeUser),
     };
   }
 
+  async function registerCustomer(registration) {
+    await assertSelfRegistrationOpen();
+    const company = await customers.findActiveCompany(registration.companyId);
+    if (!company) {
+      throw new AppError("Select an active company", 422, "COMPANY_NOT_FOUND", [
+        { field: "companyId", message: "Select an active company" },
+      ]);
+    }
+
+    if (await users.findByEmail(registration.email)) {
+      throw new AppError("An account with this email already exists", 409, "EMAIL_EXISTS", [
+        { field: "email", message: "An account with this email already exists" },
+      ]);
+    }
+
+    const passwordHash = await hashPassword(registration.password);
+    const customer = await customers.createCustomer({
+      companyId: company.companyId,
+      firstName: registration.firstName,
+      lastName: registration.lastName,
+      email: registration.email,
+      passwordHash,
+    });
+
+    const safeUser = {
+      accountType: "individual",
+      userId: customer.userId,
+      email: customer.email,
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      onlineStatus: "Offline",
+      roleName: "Customer",
+    };
+
+    return { user: safeUser, accessToken: await generateToken(safeUser) };
+  }
+
   async function setPassword(userId, rawPassword) {
+    const policy = await runtimeSettings.getPasswordPolicy();
+    if (!isPasswordAllowed(rawPassword, policy)) {
+      throw new AppError("Validation failed", 422, "VALIDATION_ERROR", [
+        { field: "password", message: passwordPolicyMessage(policy) },
+      ]);
+    }
     const passwordHash = await hashPassword(rawPassword);
     if (users.setPassword) {
       await users.setPassword(userId, passwordHash);
@@ -153,10 +253,13 @@ function createAuthService(dependencies = {}) {
       const resetLink = `${clientOrigin}/reset-password?token=${rawToken}`;
 
       // Send the actual password reset email
-      if (process.env.NODE_ENV !== "test") {
-        console.log(`[AUTH] Password reset link for ${cleanEmail}: ${resetLink}`);
+      // Under NODE_ENV=test mail is only sent through an injected sender.
+      if (process.env.NODE_ENV !== "test" || dependencies.sendPasswordResetEmail) {
+        if (process.env.NODE_ENV !== "test") {
+          console.log(`[AUTH] Password reset link for ${cleanEmail}: ${resetLink}`);
+        }
         try {
-          await mailSender(cleanEmail, resetLink);
+          await mailSender(cleanEmail, resetLink, await runtimeSettings.getEmail());
         } catch (emailErr) {
           console.error(`[EMAIL] Failed to send password reset email to ${cleanEmail}:`, emailErr.message);
           throw new AppError(
@@ -271,7 +374,10 @@ function createAuthService(dependencies = {}) {
   return {
     signIn,
     registerCompany,
+    registerCustomer,
     generateToken,
+    getCookieOptions,
+    isSignInBlockedByMaintenance,
     setPassword,
     requestPasswordReset,
     verifyResetToken,

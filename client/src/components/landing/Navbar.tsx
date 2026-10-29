@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ROUTES } from "../../router/routes";
+import { usePlatformSettings } from "../common/platformSettingsContext";
 
 interface NavbarProps {
   onOpenDemo?: () => void;
 }
 
 export function Navbar({ onOpenDemo }: NavbarProps) {
+  const { allowSelfRegistration } = usePlatformSettings();
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -94,13 +96,15 @@ export function Navbar({ onOpenDemo }: NavbarProps) {
           >
             Login
           </Link>
-          <Link
-            to={ROUTES.REGISTER_COMPANY}
-            className="magnetic-btn bg-primary hover:bg-primary-container text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/40 transition-all active:scale-95 inline-flex items-center gap-1.5"
-          >
-            <span>Get Started</span>
-            <span className="material-symbols-outlined text-base">arrow_forward</span>
-          </Link>
+          {allowSelfRegistration && (
+            <Link
+              to={ROUTES.REGISTER_COMPANY}
+              className="magnetic-btn bg-primary hover:bg-primary-container text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/40 transition-all active:scale-95 inline-flex items-center gap-1.5"
+            >
+              <span>Get Started</span>
+              <span className="material-symbols-outlined text-base">arrow_forward</span>
+            </Link>
+          )}
 
           {/* Mobile hamburger button */}
           <button

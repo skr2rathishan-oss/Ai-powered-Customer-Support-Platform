@@ -260,3 +260,57 @@ test("automatically registers an active company administrator", async () => {
   assert.equal(result.user.email, "contact@acme.example");
   assert.equal(result.user.adminEmail, "admin@acme.example");
 });
+
+test("sign-in passes the stored token expiry to the token factory", async () => {
+  const databaseUser = await makeUser();
+  const seen = [];
+  const service = createAuthService({
+    userModel: { findByEmail: async () => databaseUser },
+    runtimeSettings: {
+      getSecurity: async () => ({ jwtExpiresIn: "15m", cookieOptions: { secure: true } }),
+      get: async () => ({
+        general: { allowSelfRegistration: true },
+        infrastructure: { maintenanceMode: false },
+      }),
+    },
+    createAccessToken: (_user, options) => {
+      seen.push(options);
+      return "t";
+    },
+  });
+
+  await service.signIn({ accountType: "individual", email: databaseUser.email, password: VALID_PASSWORD });
+  assert.deepEqual(seen, [{ expiresIn: "15m" }]);
+  assert.deepEqual(await service.getCookieOptions(), { secure: true });
+});
+
+test("setPassword enforces the stored password policy", async () => {
+  let saved = null;
+  const service = createAuthService({
+    userModel: { setPassword: async (id, hash) => { saved = { id, hash }; } },
+    hashPassword: async (password) => `hashed:${password}`,
+    runtimeSettings: {
+      getPasswordPolicy: async () => ({ minPasswordLength: 12, requireSpecialChar: true }),
+    },
+  });
+
+  await assert.rejects(() => service.setPassword(5, "Abcdefg1!x"), (error) => {
+    assert.equal(error.statusCode ?? error.status, 422);
+    assert.equal(error.code, "VALIDATION_ERROR");
+    return true;
+  });
+  assert.equal(saved, null);
+
+  await service.setPassword(5, "Abcdefg1!xyz");
+  assert.deepEqual(saved, { id: 5, hash: "hashed:Abcdefg1!xyz" });
+});
+
+test("service without a runtimeSettings dependency falls back to default settings", async () => {
+  const databaseUser = await makeUser();
+  const service = createAuthService({
+    userModel: { findByEmail: async () => databaseUser },
+    createAccessToken: () => "default.token",
+  });
+  const result = await service.signIn({ accountType: "individual", email: databaseUser.email, password: VALID_PASSWORD });
+  assert.equal(result.accessToken, "default.token");
+});

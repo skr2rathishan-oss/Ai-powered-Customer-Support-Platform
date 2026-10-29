@@ -5,6 +5,7 @@ interface PasswordFieldProps {
   disabled?: boolean;
   error?: string;
   label?: string;
+  hint?: string;
   autoComplete?: string;
   onBlur: () => void;
   onChange: (value: string) => void;
@@ -18,6 +19,7 @@ export function PasswordField({
   disabled = false,
   error,
   label = "Password",
+  hint,
   autoComplete = "current-password",
   onBlur,
   onChange,
@@ -65,6 +67,11 @@ export function PasswordField({
           )}
         </button>
       </div>
+      {hint && !error ? (
+        <p className="field-hint" data-testid={`${id}-hint`}>
+          {hint}
+        </p>
+      ) : null}
       {error ? (
         <p className="field-error" id={errorId} role="alert">
           {error}

@@ -103,6 +103,26 @@ include `companyId` and `companyName`. Use `requireAccountType("company")` or
 `requireAccountType("individual")` after `authenticate` on portal-specific
 backend routes.
 
+## Google sign-in
+
+Google is sign-in only for existing accounts; it never creates one.
+
+- `GET /api/auth/providers` returns `{ success, data: { google } }`. The login
+  page shows "Continue with Google" only when `google` is true, which requires
+  a real `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (the `dummy-*` fallbacks
+  do not count). Register `GOOGLE_CALLBACK_URL` in the Google console.
+- `GET /api/auth/google` starts the flow, or redirects to
+  `CLIENT_ORIGIN/login?error=google_not_configured`.
+- The callback matches by `google_id`, else links by email. Success sets the
+  httpOnly auth cookie and redirects to `CLIENT_ORIGIN/auth/callback`; no token
+  is ever placed in a URL. The client then calls `/api/auth/me` and routes by role.
+- Failures redirect to `CLIENT_ORIGIN/login?error=` with `google_auth_failed`,
+  `google_no_account`, `google_inactive` or `google_role_unsupported`.
+- Allowed roles: Platform Admin, Support Agent, Customer. Company Admin accounts
+  must use company sign-in. Redirect targets come from `CLIENT_ORIGIN` only.
+- The cookie handoff needs the API and client to share a site (or a suitable
+  `JWT_COOKIE_SAME_SITE`/`JWT_COOKIE_SECURE`) in production.
+
 ## Production settings
 
 - Replace `JWT_SECRET` with a cryptographically random secret.

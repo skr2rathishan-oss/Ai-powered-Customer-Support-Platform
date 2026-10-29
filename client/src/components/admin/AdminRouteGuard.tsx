@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ROUTES } from "../../router/routes";
 import { apiRequest, getStoredUser, setStoredUser } from "../../services/apiClient";
+import { WorkspaceLink } from "../common/WorkspaceLink";
 
 interface UserProfile {
   userId: string | number;
@@ -106,6 +107,7 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
             {user?.roleName || user?.accountType}), which does not possess Platform Administrator permissions.
           </p>
           <div className="flex flex-col gap-3 w-full">
+            <WorkspaceLink areaHome={ROUTES.ADMIN_DASHBOARD} />
             <Link
               to={ROUTES.LOGIN}
               className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-all text-center no-underline shadow-sm"

@@ -8,12 +8,46 @@ const { createAuthRouter } = require("./routes/authRoutes");
 const { createAuthService } = require("./services/authService");
 const { createAdminRouter } = require("./routes/adminRoutes");
 const { createAdminService } = require("./services/adminService");
+const { createCompanyRouter } = require("./routes/companyRoutes");
+const { createCompanyService } = require("./services/companyService");
+const { createTicketRouter } = require("./routes/ticketRoutes");
+const { createTicketService } = require("./services/ticketService");
+const { createAgentRouter } = require("./routes/agentRoutes");
+const { createAgentService } = require("./services/agentService");
+const { createFaqRouter } = require("./routes/faqRoutes");
+const { createFaqService } = require("./services/faqService");
+const { createAiSettingsRouter } = require("./routes/aiSettingsRoutes");
+const { createAiSettingsService } = require("./services/aiSettingsService");
+const { createCustomerRouter } = require("./routes/customerRoutes");
+const { createCustomerService } = require("./services/customerService");
+const { createAgentPortalRouter } = require("./routes/agentPortalRoutes");
+const { createAgentPortalService } = require("./services/agentPortalService");
+const { createPublicRouter } = require("./routes/publicRoutes");
+const { resolveRuntimeSettings } = require("./services/runtimeSettings");
+const { createMaintenanceMiddleware } = require("./middleware/maintenanceMode");
+const defaultCustomerModel = require("./models/customerModel");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 
 function createApp(dependencies = {}) {
   const app = express();
+  const runtimeSettings = resolveRuntimeSettings(dependencies);
+  dependencies = { ...dependencies, runtimeSettings };
+  app.locals.runtimeSettings = runtimeSettings;
   const authService = dependencies.authService || createAuthService(dependencies);
   const adminService = dependencies.adminService || createAdminService(dependencies);
+  const companyService =
+    dependencies.companyService || createCompanyService(dependencies);
+  const ticketService =
+    dependencies.ticketService || createTicketService(dependencies);
+  const agentService =
+    dependencies.agentService || createAgentService(dependencies);
+  const faqService = dependencies.faqService || createFaqService(dependencies);
+  const aiSettingsService =
+    dependencies.aiSettingsService || createAiSettingsService(dependencies);
+  const customerService =
+    dependencies.customerService || createCustomerService(dependencies);
+  const agentPortalService =
+    dependencies.agentPortalService || createAgentPortalService(dependencies);
   const passport = dependencies.passport || configurePassport(dependencies);
 
   app.disable("x-powered-by");
@@ -49,11 +83,33 @@ function createApp(dependencies = {}) {
     response.status(200).json({ status: "ok" });
   });
 
-  const authRouter = createAuthRouter(authService, { passport });
+  app.use(createMaintenanceMiddleware(runtimeSettings));
+
+  const authRouter = createAuthRouter(authService, {
+    passport,
+    isGoogleConfigured: dependencies.isGoogleConfigured,
+  });
   const adminRouter = createAdminRouter(adminService);
   app.use("/api/auth", authRouter);
   app.use("/auth", authRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/company/tickets", createTicketRouter(ticketService));
+  app.use("/api/company/agents", createAgentRouter(agentService));
+  app.use("/api/company/faqs", createFaqRouter(faqService));
+  app.use(
+    "/api/company/ai-settings",
+    createAiSettingsRouter(aiSettingsService),
+  );
+  app.use("/api/company", createCompanyRouter(companyService));
+  app.use("/api/agent", createAgentPortalRouter(agentPortalService));
+  app.use("/api/customer", createCustomerRouter(customerService));
+  app.use(
+    "/api/public",
+    createPublicRouter(
+      dependencies.customerModel || defaultCustomerModel,
+      runtimeSettings,
+    ),
+  );
   app.use(notFoundHandler);
   app.use(errorHandler);
 
