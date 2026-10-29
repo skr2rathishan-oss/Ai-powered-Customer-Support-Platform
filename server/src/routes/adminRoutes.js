@@ -1,6 +1,7 @@
 const express = require("express");
 const { createAdminController } = require("../controllers/adminController");
 const { authenticate, requireRole } = require("../middleware/authenticate");
+const { validateCompanyOnboardingRequest } = require("../middleware/validateRequest");
 const asyncHandler = require("../utils/asyncHandler");
 
 function createAdminRouter(adminService) {
@@ -23,6 +24,11 @@ function createAdminRouter(adminService) {
 
   // 2. Companies Management Directory & Actions
   router.get("/companies", asyncHandler(controller.getCompanies));
+  router.post(
+    "/companies",
+    validateCompanyOnboardingRequest,
+    asyncHandler(controller.onboardCompany),
+  );
   router.get("/companies/:id", asyncHandler(controller.getCompany));
   router.patch("/companies/:id/status", asyncHandler(controller.updateCompanyStatus));
   router.delete("/companies/:id", asyncHandler(controller.deleteCompany));

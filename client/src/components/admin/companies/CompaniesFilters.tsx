@@ -1,5 +1,4 @@
-import { Link } from "react-router";
-import { ROUTES } from "../../../router/routes";
+import { INDUSTRIES } from "../../../validation/companyRegistration";
 
 interface CompaniesFiltersProps {
   search: string;
@@ -11,6 +10,7 @@ interface CompaniesFiltersProps {
   sortBy: string;
   onSortChange: (val: string) => void;
   onExport: () => void;
+  onOnboard: () => void;
 }
 
 const STATUS_OPTIONS = [
@@ -21,15 +21,10 @@ const STATUS_OPTIONS = [
   { value: "Inactive", label: "Inactive" },
 ];
 
+// Same list the registration and onboarding forms save, so every filter can match
 const INDUSTRY_OPTIONS = [
   { value: "all", label: "All Industries" },
-  { value: "Technology", label: "Technology" },
-  { value: "Healthcare", label: "Healthcare" },
-  { value: "Finance & Banking", label: "Finance & Banking" },
-  { value: "E-Commerce", label: "E-Commerce" },
-  { value: "Logistics", label: "Logistics" },
-  { value: "Education", label: "Education" },
-  { value: "Retail", label: "Retail" },
+  ...INDUSTRIES.map((industry) => ({ value: industry, label: industry })),
 ];
 
 export function CompaniesFilters({
@@ -42,6 +37,7 @@ export function CompaniesFilters({
   sortBy,
   onSortChange,
   onExport,
+  onOnboard,
 }: CompaniesFiltersProps) {
   return (
     <div className="bg-white border border-[#e2e4e9] rounded-2xl p-4 shadow-2xs space-y-4">
@@ -70,13 +66,14 @@ export function CompaniesFilters({
             <span className="material-symbols-outlined text-sm">download</span>
             Export CSV
           </button>
-          <Link
-            to={ROUTES.REGISTER_COMPANY}
-            className="px-4 py-2 rounded-xl bg-[#6D5EF5] hover:bg-[#5b4be8] text-white text-xs font-bold transition-all shadow-md shadow-[#6D5EF5]/20 hover:shadow-lg hover:shadow-[#6D5EF5]/30 flex items-center gap-1.5 no-underline active:scale-95"
+          <button
+            type="button"
+            onClick={onOnboard}
+            className="px-4 py-2 rounded-xl bg-[#6D5EF5] hover:bg-[#5b4be8] text-white text-xs font-bold transition-all shadow-md shadow-[#6D5EF5]/20 hover:shadow-lg hover:shadow-[#6D5EF5]/30 flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
             <span className="material-symbols-outlined text-sm">add_business</span>
             Onboard Enterprise
-          </Link>
+          </button>
         </div>
       </div>
 

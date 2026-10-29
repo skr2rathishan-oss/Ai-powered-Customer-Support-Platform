@@ -265,10 +265,39 @@ function validateResetPasswordPayload(payload) {
   return { value: { token, password }, errors };
 }
 
+const ONBOARDING_STATUSES = new Set(["Active", "Pending"]);
+
+/**
+ * Validates a company onboarded by a Platform Admin: the same fields as
+ * self-registration plus the initial company status.
+ */
+function validateCompanyOnboardingPayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return validateCompanyRegistrationPayload(payload);
+  }
+
+  const { status, ...registration } = payload;
+  const result = validateCompanyRegistrationPayload(registration);
+  const companyStatus = normalizedString(status) || "Active";
+
+  if (!ONBOARDING_STATUSES.has(companyStatus)) {
+    result.errors.push({
+      field: "status",
+      message: "Status must be either Active or Pending",
+    });
+  }
+
+  return {
+    value: { ...result.value, status: companyStatus },
+    errors: result.errors,
+  };
+}
+
 module.exports = {
   INDUSTRIES,
   validateSignInPayload,
   validateCompanyRegistrationPayload,
+  validateCompanyOnboardingPayload,
   validateForgotPasswordPayload,
   validateResetPasswordPayload,
 };

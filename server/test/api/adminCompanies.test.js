@@ -8,6 +8,7 @@ const assert = require("node:assert/strict");
 const { createApp } = require("../../src/app");
 const { createAccessToken } = require("../../src/utils/token");
 const { getAuthConfig } = require("../../src/config/auth");
+const AppError = require("../../src/utils/AppError");
 
 async function startTestServer(dependencies = {}) {
   const app = createApp(dependencies);
@@ -99,8 +100,41 @@ test("Platform Admin Companies Management API Tests", async (context) => {
     },
   };
 
+  const registrations = [];
+  const mockCompanyModel = {
+    createRegistration: async (registration) => {
+      if (companiesStore.some((c) => c.businessEmail === registration.businessEmail)) {
+        throw new AppError(
+          "A company with this business email already exists",
+          409,
+          "BUSINESS_EMAIL_EXISTS",
+          [{ field: "businessEmail", message: "A company with this business email already exists" }],
+        );
+      }
+      registrations.push(registration);
+      const companyId = 100 + registrations.length;
+      companiesStore.push({
+        companyId,
+        companyName: registration.companyName,
+        industry: registration.industry,
+        businessEmail: registration.businessEmail,
+        status: registration.companyStatus,
+        registrationDate: new Date().toISOString(),
+        adminId: 500 + registrations.length,
+        adminFirstName: registration.adminFirstName,
+        adminLastName: registration.adminLastName,
+        adminEmail: registration.adminEmail,
+      });
+      return { companyId, userId: 500 + registrations.length };
+    },
+  };
+
   const { createAdminService } = require("../../src/services/adminService");
-  const adminService = createAdminService({ adminModel: mockAdminModel });
+  const adminService = createAdminService({
+    adminModel: mockAdminModel,
+    companyModel: mockCompanyModel,
+    hashPassword: async (password) => `hashed:${password}`,
+  });
 
   const server = await startTestServer({ adminService });
   context.after(() => server.close());
@@ -164,6 +198,104 @@ test("Platform Admin Companies Management API Tests", async (context) => {
     assert.equal(response.status, 200);
     assert.equal(body.data.companyName, "Acme Corp");
     assert.equal(body.data.users.length, 1);
+  });
+
+  const onboardingPayload = {
+    companyName: "Gamma Health",
+    industry: "Healthcare",
+    businessEmail: "Contact@GammaHealth.com",
+    phone: "+94 77 123 4567",
+    website: "https://gammahealth.com",
+    description: "Telehealth provider.",
+    adminFirstName: "Grace",
+    adminLastName: "Perera",
+    adminEmail: "grace@gammahealth.com",
+    password: "Str0ng!Pass",
+    status: "Pending",
+  };
+
+  await context.test("POST /api/admin/companies requires Platform Admin authorization", async () => {
+    const nonAdminToken = createAccessToken({
+      accountType: "company",
+      userId: 2,
+      companyId: 1,
+      email: "companyadmin@example.com",
+      roleName: "Company Admin",
+    });
+    const response = await fetch(`${server.baseUrl}/api/admin/companies`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${nonAdminToken}`,
+      },
+      body: JSON.stringify(onboardingPayload),
+    });
+
+    assert.equal(response.status, 403);
+    assert.equal(registrations.length, 0);
+  });
+
+  await context.test("POST /api/admin/companies onboards a company with a hashed admin password", async () => {
+    const response = await fetch(`${server.baseUrl}/api/admin/companies`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify(onboardingPayload),
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 201);
+    assert.equal(body.success, true);
+    assert.equal(body.data.companyName, "Gamma Health");
+    assert.equal(body.data.businessEmail, "contact@gammahealth.com");
+    assert.equal(body.data.status, "Pending");
+    assert.equal(registrations[0].passwordHash, "hashed:Str0ng!Pass");
+    assert.equal(registrations[0].password, undefined);
+    assert.equal(registrations[0].adminStatus, "Active");
+    assert.equal(response.headers.get("set-cookie"), null);
+  });
+
+  await context.test("POST /api/admin/companies rejects a duplicate business email with 409", async () => {
+    const response = await fetch(`${server.baseUrl}/api/admin/companies`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({ ...onboardingPayload, adminEmail: "other@gammahealth.com" }),
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 409);
+    assert.equal(body.code, "BUSINESS_EMAIL_EXISTS");
+    assert.equal(body.errors[0].field, "businessEmail");
+  });
+
+  await context.test("POST /api/admin/companies returns field errors for invalid input", async () => {
+    const response = await fetch(`${server.baseUrl}/api/admin/companies`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        ...onboardingPayload,
+        companyName: "",
+        businessEmail: "not-an-email",
+        password: "weak",
+        status: "Suspended",
+      }),
+    });
+    const body = await response.json();
+    const fields = body.errors.map((error) => error.field);
+
+    assert.equal(response.status, 422);
+    assert.ok(fields.includes("companyName"));
+    assert.ok(fields.includes("businessEmail"));
+    assert.ok(fields.includes("password"));
+    assert.ok(fields.includes("status"));
   });
 
   await context.test("PATCH /api/admin/companies/:id/status updates status", async () => {

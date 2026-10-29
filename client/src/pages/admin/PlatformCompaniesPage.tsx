@@ -6,10 +6,12 @@ import { CompaniesStatsHeader } from "../../components/admin/companies/Companies
 import { CompaniesFilters } from "../../components/admin/companies/CompaniesFilters";
 import { CompaniesTable } from "../../components/admin/companies/CompaniesTable";
 import { CompanyDetailModal } from "../../components/admin/companies/CompanyDetailModal";
+import { OnboardCompanyModal } from "../../components/admin/companies/OnboardCompanyModal";
 import {
   fetchCompaniesDirectory,
   updateCompanyStatus,
   deleteCompany,
+  type CompanyDetailData,
   type CompanyDirectoryItem,
   type CompanyCounts,
   type CompanyDirectoryPagination,
@@ -20,6 +22,7 @@ export function PlatformCompaniesPage() {
   const initialSearch = searchParams.get("search") || "";
   const initialStatus = searchParams.get("status") || "all";
   const initialIndustry = searchParams.get("industry") || "all";
+  const [onboardOpen, setOnboardOpen] = useState(false);
 
   const [companies, setCompanies] = useState<CompanyDirectoryItem[]>([]);
   const [counts, setCounts] = useState<CompanyCounts>({ total: 0, active: 0, pending: 0, suspended: 0 });
@@ -90,6 +93,18 @@ export function PlatformCompaniesPage() {
     } catch (_err) {
       showToast("Failed to update status. Please try again.");
     }
+  }
+
+  function handleOnboarded(company: CompanyDetailData) {
+    setOnboardOpen(false);
+    showToast(`${company.companyName} onboarded successfully.`);
+    // Show the new company at the top of an unfiltered list
+    setSearch("");
+    setStatus("all");
+    setIndustry("all");
+    setSortBy("newest");
+    setPage(1);
+    loadData();
   }
 
   async function handleDeleteCompany(companyId: number) {
@@ -178,6 +193,7 @@ export function PlatformCompaniesPage() {
             sortBy={sortBy}
             onSortChange={(val) => setSortBy(val)}
             onExport={handleExportCsv}
+            onOnboard={() => setOnboardOpen(true)}
           />
 
           {/* Companies Data Table */}
@@ -197,6 +213,12 @@ export function PlatformCompaniesPage() {
           companyId={selectedCompanyId}
           onClose={() => setSelectedCompanyId(null)}
           onStatusChange={handleStatusChange}
+        />
+
+        <OnboardCompanyModal
+          open={onboardOpen}
+          onClose={() => setOnboardOpen(false)}
+          onOnboarded={handleOnboarded}
         />
       </AdminLayout>
     </AdminRouteGuard>

@@ -36,6 +36,16 @@ function createAdminController(adminService) {
     });
   }
 
+  async function onboardCompany(request, response) {
+    const data = await adminService.onboardCompany(request.validatedBody);
+
+    return response.status(201).json({
+      success: true,
+      message: "Company onboarded successfully",
+      data,
+    });
+  }
+
   async function updateCompanyStatus(request, response) {
     const companyId = Number(request.params.id);
     const { status } = request.body || {};
@@ -94,6 +104,7 @@ function createAdminController(adminService) {
     getDashboard,
     getCompanies,
     getCompany,
+    onboardCompany,
     updateCompanyStatus,
     deleteCompany,
     getSettings,

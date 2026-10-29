@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const path = require("node:path");
 const dns = require("node:dns");
 const mongoose = require("mongoose");
 const mysql = require("mysql2/promise");
@@ -36,7 +37,10 @@ async function connectMongoDB() {
 
 function getMySQLPool() {
   if (!mysqlPool) {
-    const caPath = process.env.MYSQL_CA_PATH;
+    // Relative CA paths resolve from the server/ directory so .env stays portable
+    const caPath = process.env.MYSQL_CA_PATH
+      ? path.resolve(__dirname, "../..", process.env.MYSQL_CA_PATH)
+      : undefined;
 
     mysqlPool = mysql.createPool({
       host: requireEnvironmentVariable("MYSQL_HOST"),

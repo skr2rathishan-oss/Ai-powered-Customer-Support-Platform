@@ -1,4 +1,5 @@
-import { apiRequest } from "./apiClient";
+import { ApiError, apiRequest } from "./apiClient";
+import type { CompanyRegistrationPayload } from "../types/auth";
 
 export interface PlatformStats {
   totalCompanies: number;
@@ -242,6 +243,40 @@ export async function fetchCompanyDetail(companyId: number | string): Promise<Co
     { method: "GET" },
   );
   return payload.data;
+}
+
+export interface OnboardCompanyPayload extends CompanyRegistrationPayload {
+  status: "Active" | "Pending";
+}
+
+export class OnboardCompanyError extends Error {
+  readonly fieldErrors: Record<string, string>;
+
+  constructor(message: string, fieldErrors: Record<string, string> = {}) {
+    super(message);
+    this.name = "OnboardCompanyError";
+    this.fieldErrors = fieldErrors;
+  }
+}
+
+export async function onboardCompany(payload: OnboardCompanyPayload): Promise<CompanyDetailData> {
+  try {
+    const response = await apiRequest<{ success: boolean; data: CompanyDetailData }>(
+      "/api/admin/companies",
+      { method: "POST", data: payload },
+    );
+    return response.data;
+  } catch (error: unknown) {
+    if (error instanceof ApiError) {
+      const body = error.payload as { errors?: Array<{ field?: string; message?: string }> } | null;
+      const fieldErrors = (body?.errors ?? []).reduce<Record<string, string>>((acc, item) => {
+        if (item.field && item.message) acc[item.field] = item.message;
+        return acc;
+      }, {});
+      throw new OnboardCompanyError(error.message, fieldErrors);
+    }
+    throw new OnboardCompanyError("Failed to onboard company. Please try again.");
+  }
 }
 
 export async function updateCompanyStatus(

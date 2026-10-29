@@ -1,6 +1,7 @@
 const {
   validateSignInPayload,
   validateCompanyRegistrationPayload,
+  validateCompanyOnboardingPayload,
   validateForgotPasswordPayload,
   validateResetPasswordPayload,
 } = require("../validators/authValidator");
@@ -22,6 +23,21 @@ function validateSignInRequest(request, response, next) {
 
 function validateCompanyRegistrationRequest(request, response, next) {
   const result = validateCompanyRegistrationPayload(request.body);
+
+  if (result.errors.length > 0) {
+    return response.status(422).json({
+      success: false,
+      message: "Validation failed",
+      errors: result.errors,
+    });
+  }
+
+  request.validatedBody = result.value;
+  return next();
+}
+
+function validateCompanyOnboardingRequest(request, response, next) {
+  const result = validateCompanyOnboardingPayload(request.body);
 
   if (result.errors.length > 0) {
     return response.status(422).json({
@@ -68,6 +84,7 @@ function validateResetPasswordRequest(request, response, next) {
 module.exports = {
   validateSignInRequest,
   validateCompanyRegistrationRequest,
+  validateCompanyOnboardingRequest,
   validateForgotPasswordRequest,
   validateResetPasswordRequest,
 };

@@ -1,4 +1,6 @@
+const bcrypt = require("bcrypt");
 const defaultAdminModel = require("../models/adminModel");
+const defaultCompanyModel = require("../models/companyModel");
 const mongoose = require("mongoose");
 const { getMySQLPool } = require("../config/database");
 const { sendMail } = require("./emailService");
@@ -51,6 +53,10 @@ let platformSettingsState = {
 function createAdminService(dependencies = {}) {
   const adminModel = dependencies.adminModel || defaultAdminModel;
   const mailSender = dependencies.sendMail || sendMail;
+  const companyModel = dependencies.companyModel || defaultCompanyModel;
+  const hashPassword =
+    dependencies.hashPassword ||
+    ((password) => bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS || 12)));
 
   /**
    * Performs quick diagnostic health checks on key platform infrastructure components.
@@ -117,6 +123,23 @@ function createAdminService(dependencies = {}) {
       throw new AppError("Company not found", 404, "COMPANY_NOT_FOUND");
     }
     return company;
+  }
+
+  /**
+   * Onboards a company and its administrator account on behalf of the tenant.
+   * Unlike self-registration, no session is issued for the new admin.
+   */
+  async function onboardCompany(registration) {
+    const passwordHash = await hashPassword(registration.password);
+    const account = await companyModel.createRegistration({
+      ...registration,
+      password: undefined,
+      passwordHash,
+      companyStatus: registration.status,
+      adminStatus: "Active",
+    });
+
+    return adminModel.getCompanyById(account.companyId);
   }
 
   /**
@@ -275,6 +298,7 @@ function createAdminService(dependencies = {}) {
     getPlatformHealth,
     listCompanies,
     getCompanyDetails,
+    onboardCompany,
     changeCompanyStatus,
     deleteCompany,
     getPlatformSettings,
