@@ -47,10 +47,10 @@ CLAUDE.md
 .agents/
 .playwright-cli/
 
-# Local working docs, report and screenshots (submitted separately)
+# Local working docs and the report (submitted separately).
+# docs/screenshots/ is committed because the README displays the screenshots.
 docs/plans/
 docs/report/
-docs/screenshots/
 docs/PROGRESS.md
 
 # Third-party references and scratch folders

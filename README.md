@@ -2,27 +2,66 @@
 
 SupportPilot is a **multi-tenant customer support platform**. A Platform Administrator onboards companies, though companies can also register themselves. Each company invites its own support agents, publishes FAQ articles, and gets an **AI assistant** that answers customers first. Anything the AI can't solve becomes a **ticket assigned to a human agent**. There are four roles, and each has its own portal and dashboard.
 
-> **Course:** EC4307 Web Application Development: Mini Project  ·  **Student:** EG/2023/5827
-> **Repository:** https://github.com/skr2rathishan-oss/Ai-powered-Customer-Support-Platform
+| | |
+|---|---|
+| **Student** | Mahendran Rathishan (EG/2023/5827) |
+| **Module** | EC4307 Web Application Development: Mini Project |
+| **Institution** | Department of Electrical and Information Engineering, Faculty of Engineering, University of Ruhuna |
+| **Repository** | https://github.com/skr2rathishan-oss/Ai-powered-Customer-Support-Platform |
+| **Database** | MySQL-compatible **TiDB Cloud** (14 tables, see [Database Design](#-database-design)) |
 
 ---
 
 ## 📑 Contents
 
-1. [Key Features](#-key-features)
-2. [Tech Stack](#-tech-stack)
-3. [Architecture](#-architecture)
-4. [Demo Accounts](#-demo-accounts)
-5. [AI-First Support Flow](#-ai-first-support-flow)
-6. [Getting Started](#-getting-started)
-7. [CRUD Operations](#-crud-operations)
-8. [Validation and Security](#-validation-and-security)
-9. [Database Design](#-database-design)
-10. [REST API](#-rest-api)
-11. [Testing](#-testing)
-12. [Project Structure](#-project-structure)
-13. [Screenshots](#-screenshots)
-14. [Documentation and Deliverables](#-documentation-and-deliverables)
+1. [Problem and Solution](#-problem-and-solution)
+2. [Assessment Requirements Checklist](#-assessment-requirements-checklist)
+3. [Key Features](#-key-features)
+4. [Tech Stack](#-tech-stack)
+5. [Architecture](#-architecture)
+6. [Demo Accounts](#-demo-accounts)
+7. [AI-First Support Flow](#-ai-first-support-flow)
+8. [Setup Steps (Getting Started)](#-getting-started)
+9. [CRUD Operations](#-crud-operations)
+10. [Validation and Security](#-validation-and-security)
+11. [Database Design and ERD](#-database-design)
+12. [REST API](#-rest-api)
+13. [Testing](#-testing)
+14. [Project Structure](#-project-structure)
+15. [Screenshots](#-screenshots)
+16. [Documentation and Deliverables](#-documentation-and-deliverables)
+
+---
+
+## 💡 Problem and Solution
+
+**Problem.** Almost every company is now moving its business to an online platform. Once customers come online they have questions and problems, but most of these companies have **no customer support system**. To get one, each company would have to build it separately: hire developers, build a ticket system, set up and maintain a database, and recruit and organise support staff. That takes time and money that many small and medium-sized businesses do not have, and most incoming questions are the same ones repeated, so agents spend their day giving the same answers.
+
+**Solution.** SupportPilot provides **customer support as a service**. Instead of building its own system, a company is onboarded onto one shared, multi-tenant platform. It publishes its FAQs, invites its support agents and immediately has a complete support service:
+- an **AI assistant** that answers customers only from the company's published FAQs (and the customer's own orders);
+- a **ticket system** that turns anything the assistant cannot solve into a ticket for a human agent;
+- **dashboards** for the platform, the company, its agents and its customers.
+
+**Scope.** A ready-made customer support platform for companies moving online, with four roles: Platform Admin, Company Admin, Support Agent and Customer. Billing, live voice support and native mobile apps are out of scope.
+
+---
+
+## 📋 Assessment Requirements Checklist
+
+How the project meets each criterion of the EC4307 mini project rubric:
+
+| Criterion | Marks | Where it is met |
+|---|---|---|
+| **Create** | 4 | Validated forms: Add FAQ, Onboard Enterprise (company), New ticket, Invite agent. See [CRUD Operations](#-crud-operations) |
+| **Read** | 4 | Lists, detail pages and modals with **search, filters, sort and pagination** (company directory, ticket queues, FAQ list) |
+| **Update** | 4 | Edit FAQ and publish/unpublish; change company status; change ticket status, priority and assignee; edit AI settings |
+| **Delete** | 4 | Delete FAQ and delete company, each behind a **confirmation dialog**; company delete runs in **one transaction** |
+| **Validation and Error Handling** | 2 | Client-side field validation plus server validators (HTTP 422 with per-field errors) and a central error handler. See [Validation and Security](#-validation-and-security) |
+| **Database Design** | 4 | 14 normalised tables (3NF) on TiDB Cloud with primary, unique and foreign keys and suitable data types. See [Database Design and ERD](#-database-design) |
+| **UI/UX and Responsiveness** | 2 | One consistent layout per portal; responsive down to phone width (see the mobile screenshot) |
+| **Code Quality and Structure** | 2 | Layered server (routes → validators → controllers → services → models), reusable client components, Git feature branches. See [Project Structure](#-project-structure) |
+| **Documentation** | 2 | This README: [setup steps](#-getting-started), [ERD](#-database-design) and [screenshots](#-screenshots) |
+| **Demonstration** | 2 | Demonstration video (submitted separately) |
 
 ---
 
@@ -55,7 +94,7 @@ SupportPilot is a **multi-tenant customer support platform**. A Platform Adminis
 
 ---
 
-## 🏗️ Architecture
+## 🧱 Architecture
 
 ```mermaid
 flowchart LR
@@ -237,7 +276,7 @@ Every operation below writes to the MySQL database and is checked on both the cl
 | Numeric ranges | AI confidence threshold 0–100; escalate after 1–10 failed answers |
 | IDs | Route parameters must be positive integers |
 
-Invalid input returns **HTTP 400** with an `errors[]` array listing each field and its message.
+Invalid input returns **HTTP 422** with an `errors[]` array listing each field and its message. Malformed JSON returns 400, a missing or expired session 401, a wrong role 403, a missing record 404, a duplicate (for example an email already in use) 409, and a temporary database outage 503. Every error has the same shape: `{ success: false, message, code, errors }`.
 
 **Security**
 - Passwords are hashed with **bcrypt** (12 rounds). Reset tokens are stored only as hashes and expire.
@@ -248,7 +287,7 @@ Invalid input returns **HTTP 400** with an `errors[]` array listing each field a
 
 ---
 
-## 🗄️ Database Design
+## 💾 Database Design
 
 The primary database is MySQL (TiDB Cloud in production).
 - **Schema file.** The full schema, with every key, index and foreign key, is in [`docs/database/schema.sql`](docs/database/schema.sql).
@@ -378,7 +417,23 @@ erDiagram
     }
 ```
 
-Rendered diagrams for the report: [conceptual ERD](docs/database/erd-conceptual.png) (Chen notation) and [physical ERD](docs/database/erd-physical.png) (crow's foot, generated from the TiDB schema). A `platform_settings` table, which is not shown, stores the platform settings as JSON.
+A `platform_settings` table, not shown above, stores the platform settings as a single JSON row, giving **14 tables** in total.
+
+### Conceptual ERD (Chen notation)
+
+![Conceptual ER diagram](docs/database/erd-conceptual.png)
+
+### Physical ERD (crow's foot, generated from the TiDB Cloud schema)
+
+PK = primary key, FK = foreign key, UK = unique key. The Graphviz sources are next to the images (`.dot`) so the diagrams can be regenerated.
+
+![Physical ER diagram](docs/database/erd-physical.png)
+
+**Design decisions**
+- **Normalisation (3NF).** Role names are stored once in `roles`; replies, chat messages, order items and FAQs live in their own child tables instead of repeating columns.
+- **Keys.** Every table has a surrogate `INT AUTO_INCREMENT` primary key. Natural identifiers are unique keys (`users.email`, `companies.business_email`, `roles.role_name`, `password_reset_tokens.token_hash`, and `(company_id, order_number)` on `orders`). One-to-one links use unique foreign keys (`company_admins.company_id`, `company_ai_settings.company_id`).
+- **Data types.** `ENUM` for fixed value sets (ticket status and priority, company status, order status), `DECIMAL(10,2)` for money, `TEXT` for free text, `TINYINT(1)` for flags, and automatic `TIMESTAMP` columns for auditing.
+- **Indexes.** Composite indexes such as `(company_id, customer_id, created_at)` support the most common tenant-scoped list queries.
 
 **Integrity rules**
 - Deleting a company runs in **one transaction** that removes its dependent data first.
@@ -455,7 +510,9 @@ Customer_Support_Platform/
 │   ├── scripts/                seed-demo-accounts, mock-server, export-schema, test-smtp
 │   └── test/                   Node test runner suites
 ├── docs/
-│   └── database/               schema.sql and ERD diagrams
+│   ├── database/               schema.sql and ER diagrams (PNG + Graphviz source)
+│   ├── screenshots/            UI screenshots used in this README
+│   └── report/                 Project report
 └── certificates/               CA certificate for TiDB Cloud TLS (git-ignored, download it yourself)
 ```
 
@@ -463,9 +520,42 @@ Customer_Support_Platform/
 
 ## 📸 Screenshots
 
-Screenshots of every portal are in the submitted project report. They cover the landing page, sign-in, the admin dashboard and company directory, the onboarding form validation, the company dashboard, FAQ management, tickets, agents, AI settings, the customer AI chat and handoff, the agent dashboard and queue, and the mobile layout.
+All screenshots are in [`docs/screenshots/`](docs/screenshots/).
 
-To generate them locally into `docs/screenshots/`, run the screenshot spec shown in [Testing](#-testing).
+### Public pages
+| Landing page | Sign in (individual and company accounts) |
+|---|---|
+| ![Landing page](docs/screenshots/01-landing.png) | ![Sign in](docs/screenshots/02-login.png) |
+
+### Platform Admin
+| Dashboard | Company directory (search, filter, sort) |
+|---|---|
+| ![Admin dashboard](docs/screenshots/03-admin-dashboard.png) | ![Company directory](docs/screenshots/04-admin-companies.png) |
+| **Onboard company form with validation errors** | |
+| ![Onboarding validation](docs/screenshots/05-admin-onboard-validation.png) | |
+
+### Company Admin
+| Dashboard | FAQ management (search, filter, edit, publish, delete) |
+|---|---|
+| ![Company dashboard](docs/screenshots/06-company-dashboard.png) | ![FAQs](docs/screenshots/07-company-faqs.png) |
+| **Add FAQ form** | **Ticket queue (filters and pagination)** |
+| ![Add FAQ](docs/screenshots/08-company-faq-form.png) | ![Tickets](docs/screenshots/09-company-tickets.png) |
+| **Support agents** | **AI assistant settings** |
+| ![Agents](docs/screenshots/10-company-agents.png) | ![AI settings](docs/screenshots/11-company-ai-settings.png) |
+
+### Customer
+| Dashboard | Chat with the AI assistant |
+|---|---|
+| ![Customer dashboard](docs/screenshots/12-customer-dashboard.png) | ![AI chat](docs/screenshots/13-customer-ai-chat.png) |
+| **Chat handed to a person (ticket created)** | **Mobile layout (390 px wide)** |
+| ![Escalated chat](docs/screenshots/14-customer-chat-escalated.png) | <img src="docs/screenshots/15-customer-dashboard-mobile.png" alt="Mobile layout" width="260"> |
+
+### Support Agent
+| Dashboard | Ticket queue |
+|---|---|
+| ![Agent dashboard](docs/screenshots/16-agent-dashboard.png) | ![Agent queue](docs/screenshots/17-agent-queue.png) |
+
+To regenerate them, run the screenshot spec shown in [Testing](#-testing).
 
 ---
 
@@ -477,6 +567,8 @@ To generate them locally into `docs/screenshots/`, run the screenshot spec shown
 | Database schema (DDL) | [`docs/database/schema.sql`](docs/database/schema.sql) |
 | ER diagrams | [`docs/database/erd-conceptual.png`](docs/database/erd-conceptual.png), [`docs/database/erd-physical.png`](docs/database/erd-physical.png) |
 | Authentication design | [`server/AUTHENTICATION.md`](server/AUTHENTICATION.md) |
-| Project report, screenshots and demo video | Submitted separately |
+| UI screenshots | [`docs/screenshots/`](docs/screenshots/) |
+| Project report (≤ 10 pages) | [`docs/report/EG_2023_5827_Report.docx`](docs/report/EG_2023_5827_Report.docx) |
+| Demonstration video (≤ 5 minutes) | Submitted separately |
 
 **Version control.** Features were built on separate branches and merged into `main`, with descriptive commit messages throughout the project history.
