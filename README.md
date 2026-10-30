@@ -548,18 +548,4 @@ All screenshots are in [`docs/screenshots/`](docs/screenshots/).
 
 To regenerate them, run the screenshot spec shown in [Testing](#-testing).
 
----
-
-## 📚 Documentation and Deliverables
-
-| Item | Location |
-|---|---|
-| Setup and usage guide | This README |
-| Database schema (DDL) | [`docs/database/schema.sql`](docs/database/schema.sql) |
-| ER diagrams | [`docs/database/erd-conceptual.png`](docs/database/erd-conceptual.png), [`docs/database/erd-physical.png`](docs/database/erd-physical.png) |
-| Authentication design | [`server/AUTHENTICATION.md`](server/AUTHENTICATION.md) |
-| UI screenshots | [`docs/screenshots/`](docs/screenshots/) |
-| Project report (≤ 10 pages) | [`docs/report/EG_2023_5827_Report.docx`](docs/report/EG_2023_5827_Report.docx) |
-| Demonstration video (≤ 5 minutes) | Submitted separately |
-
 **Version control.** Features were built on separate branches and merged into `main`, with descriptive commit messages throughout the project history.
