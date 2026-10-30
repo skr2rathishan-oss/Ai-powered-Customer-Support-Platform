@@ -1,19 +1,16 @@
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const userModel = require("../models/userModel");
+const { getGoogleCredentials } = require("./googleOAuth");
 
 function configurePassport(dependencies = {}) {
   const User = dependencies.userModel || userModel;
 
-  const GOOGLE_CLIENT_ID =
-    process.env.GOOGLE_CLIENT_ID ||
-    process.env.Google_CLIENT_ID ||
-    "dummy-google-client-id";
-
+  const credentials = getGoogleCredentials();
+  // Dummy values only let the strategy register when Google is not configured.
+  const GOOGLE_CLIENT_ID = credentials.clientId || "dummy-google-client-id";
   const GOOGLE_CLIENT_SECRET =
-    process.env.GOOGLE_CLIENT_SECRET ||
-    process.env.Google_CLIENT_SECRET ||
-    "dummy-google-client-secret";
+    credentials.clientSecret || "dummy-google-client-secret";
 
   const GOOGLE_CALLBACK_URL =
     process.env.GOOGLE_CALLBACK_URL ||
@@ -50,9 +47,10 @@ function configurePassport(dependencies = {}) {
             email: primaryEmail,
             firstName,
             lastName,
+            allowCreate: false,
           },
           function (err, user) {
-            return cb(err, user);
+            return cb(err, user || false);
           },
         );
       },

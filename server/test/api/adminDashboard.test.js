@@ -1,3 +1,8 @@
+process.env.NODE_ENV = "test";
+process.env.JWT_SECRET = "test-secret-that-is-longer-than-thirty-two-characters";
+process.env.JWT_COOKIE_SECURE = "false";
+process.env.JWT_COOKIE_SAME_SITE = "lax";
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createApp } = require("../../src/app");
@@ -6,7 +11,7 @@ const { getAuthConfig } = require("../../src/config/auth");
 
 async function startTestServer(dependencies = {}) {
   const app = createApp(dependencies);
-  const server = app.listen(0);
+  const server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
 
   const address = server.address();
@@ -63,7 +68,7 @@ test("Platform Admin Dashboard API & Role-Based Access Control", async (context)
   const adminService = createAdminService({ adminModel: mockAdminModel });
 
   const server = await startTestServer({ adminService });
-  context.after(server.close);
+  context.after(() => server.close());
 
   const { cookieName } = getAuthConfig();
 

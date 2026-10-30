@@ -1,0 +1,22 @@
+// Shared FAQ vocabulary and limits.
+const FAQ_QUESTION_MAX = 300;
+const FAQ_QUESTION_MIN = 5;
+const FAQ_ANSWER_MAX = 4000;
+const FAQ_CATEGORY_MAX = 60;
+const FAQ_SORT_MAX = 9999;
+const FAQ_SEARCH_MAX = 100;
+const FAQ_LIST_LIMIT = 500;
+const FAQ_MAX_PER_COMPANY = 500;
+const FAQ_PUBLISHED_FILTERS = ["published", "draft"];
+
+module.exports = {
+  FAQ_QUESTION_MAX,
+  FAQ_QUESTION_MIN,
+  FAQ_ANSWER_MAX,
+  FAQ_CATEGORY_MAX,
+  FAQ_SORT_MAX,
+  FAQ_SEARCH_MAX,
+  FAQ_LIST_LIMIT,
+  FAQ_MAX_PER_COMPANY,
+  FAQ_PUBLISHED_FILTERS,
+};

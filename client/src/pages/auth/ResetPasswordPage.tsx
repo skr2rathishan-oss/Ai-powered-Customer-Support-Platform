@@ -9,8 +9,11 @@ import {
   verifyResetToken,
 } from "../../services/auth";
 
-const PASSWORD_PATTERN =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s])[\s\S]{8,128}$/;
+import { usePlatformSettings } from "../../components/common/platformSettingsContext";
+import {
+  passwordMatchesPolicy,
+  passwordPolicyHint,
+} from "../../validation/passwordPolicy";
 
 function calculatePasswordStrength(pass: string): {
   score: number;
@@ -39,6 +42,7 @@ function calculatePasswordStrength(pass: string): {
 }
 
 export function ResetPasswordPage() {
+  const { passwordPolicy } = usePlatformSettings();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = (
@@ -107,9 +111,8 @@ export function ResetPasswordPage() {
 
     if (!password) {
       nextErrors.password = "Password is required.";
-    } else if (!PASSWORD_PATTERN.test(password)) {
-      nextErrors.password =
-        "Use 8+ characters with uppercase, lowercase, number, and symbol.";
+    } else if (!passwordMatchesPolicy(password, passwordPolicy)) {
+      nextErrors.password = passwordPolicyHint(passwordPolicy);
     }
 
     if (!confirmPassword) {
@@ -238,6 +241,7 @@ export function ResetPasswordPage() {
             <div>
               <PasswordField
                 id="reset-new-password"
+                hint={passwordPolicyHint(passwordPolicy)}
                 label="New Password"
                 value={password}
                 visible={passwordVisible}
@@ -248,9 +252,9 @@ export function ResetPasswordPage() {
                   if (password) {
                     setFieldErrors((curr) => ({
                       ...curr,
-                      password: PASSWORD_PATTERN.test(password)
+                      password: passwordMatchesPolicy(password, passwordPolicy)
                         ? undefined
-                        : "Use 8+ characters with uppercase, lowercase, number, and symbol.",
+                        : passwordPolicyHint(passwordPolicy),
                     }));
                   }
                 }}

@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production build outputs
+dist/
+build/
+coverage/
+.nyc_output/
+
+# Testing & End-to-End
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# Environment and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+certificates/
+
+# IDE and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Vite / bundler caches
+.vite/
+.tmp*
+
+# AI assistant and tooling config (local only)
+CLAUDE.md
+.claude/
+.agents/
+.playwright-cli/
+
+# Local working docs, report and screenshots (submitted separately)
+docs/plans/
+docs/report/
+docs/screenshots/
+docs/PROGRESS.md
+
+# Third-party references and scratch folders
+awesome-design-md/
+_to_delete/
+

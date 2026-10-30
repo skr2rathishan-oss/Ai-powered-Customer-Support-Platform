@@ -29,7 +29,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "node index.js",
+      command: process.env.E2E_SERVER_COMMAND || "node index.js",
       cwd: "../server",
       url: "http://127.0.0.1:5000/health",
       reuseExistingServer: true,
@@ -40,7 +40,7 @@ export default defineConfig({
       },
     },
     {
-      command: "npm run dev -- --host 127.0.0.1 --port 5173",
+      command: "npm run dev",
       cwd: ".",
       url: "http://127.0.0.1:5173",
       reuseExistingServer: true,

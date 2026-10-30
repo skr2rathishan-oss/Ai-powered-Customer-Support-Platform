@@ -2,6 +2,8 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000"
 ).replace(/\/$/, "");
 
+export const MAINTENANCE_EVENT = "supportpilot:maintenance";
+
 export class ApiError extends Error {
   readonly status: number;
   readonly payload?: unknown;
@@ -117,6 +119,12 @@ export async function apiRequest<T = unknown>(
       payload?.message ??
       payload?.error?.message ??
       `Request failed with status ${response.status}`;
+    if (
+      response.status === 503 &&
+      (payload as { code?: string } | null)?.code === "MAINTENANCE_MODE"
+    ) {
+      window.dispatchEvent(new Event(MAINTENANCE_EVENT));
+    }
     throw new ApiError(message, response.status, payload);
   }
 

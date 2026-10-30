@@ -1,13 +1,25 @@
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
 const { createAccessToken } = require("../utils/token");
+const { clientRedirect } = require("../utils/clientRedirect");
 
 function createAuthController(authService) {
+  // Stored cookie flags; undefined makes the cookie helpers use env config.
+  async function cookieOptions() {
+    try {
+      return authService.getCookieOptions
+        ? await authService.getCookieOptions()
+        : undefined;
+    } catch (_error) {
+      return undefined;
+    }
+  }
+
   async function signIn(request, response) {
     const { user, accessToken } = await authService.signIn(
       request.validatedBody,
     );
 
-    setAuthCookie(response, accessToken);
+    setAuthCookie(response, accessToken, await cookieOptions());
     response.set("Cache-Control", "no-store");
 
     return response.status(200).json({
@@ -22,7 +34,7 @@ function createAuthController(authService) {
       request.validatedBody,
     );
 
-    setAuthCookie(response, accessToken);
+    setAuthCookie(response, accessToken, await cookieOptions());
     response.set("Cache-Control", "no-store");
 
     return response.status(201).json({
@@ -32,8 +44,23 @@ function createAuthController(authService) {
     });
   }
 
-  function signOut(_request, response) {
-    clearAuthCookie(response);
+  async function registerCustomer(request, response) {
+    const { user, accessToken } = await authService.registerCustomer(
+      request.validatedBody,
+    );
+
+    setAuthCookie(response, accessToken, await cookieOptions());
+    response.set("Cache-Control", "no-store");
+
+    return response.status(201).json({
+      success: true,
+      message: "Registration successful",
+      data: { user, token: accessToken },
+    });
+  }
+
+  async function signOut(_request, response) {
+    clearAuthCookie(response, await cookieOptions());
     return response.status(200).json({
       success: true,
       message: "Sign-out successful",
@@ -64,12 +91,29 @@ function createAuthController(authService) {
     });
   }
 
-  function googleCallback(request, response) {
+  const GOOGLE_SIGN_IN_ROLES = new Set([
+    "Platform Admin",
+    "Support Agent",
+    "Customer",
+  ]);
+
+  async function googleCallback(request, response) {
     const rawUser = request.user;
     if (!rawUser) {
-      const clientOrigin =
-        process.env.CLIENT_ORIGIN || "http://localhost:5173";
-      return response.redirect(`${clientOrigin}/login?error=google_auth_failed`);
+      return clientRedirect(response, "/login", { error: "google_no_account" });
+    }
+
+    if (
+      rawUser.accountStatus &&
+      String(rawUser.accountStatus).toLowerCase() !== "active"
+    ) {
+      return clientRedirect(response, "/login", { error: "google_inactive" });
+    }
+
+    if (!GOOGLE_SIGN_IN_ROLES.has(rawUser.roleName)) {
+      return clientRedirect(response, "/login", {
+        error: "google_role_unsupported",
+      });
     }
 
     const safeUser = {
@@ -80,19 +124,24 @@ function createAuthController(authService) {
       ...(rawUser.lastName && { lastName: rawUser.lastName }),
       ...(rawUser.googleId && { googleId: rawUser.googleId }),
       onlineStatus: rawUser.onlineStatus || "Offline",
-      roleName: rawUser.roleName || "Agent",
+      roleName: rawUser.roleName,
     };
 
+    if (
+      authService.isSignInBlockedByMaintenance &&
+      (await authService.isSignInBlockedByMaintenance(safeUser.roleName))
+    ) {
+      return clientRedirect(response, "/login", { error: "maintenance" });
+    }
+
     const accessToken = authService.generateToken
-      ? authService.generateToken(safeUser)
+      ? await authService.generateToken(safeUser)
       : createAccessToken(safeUser);
 
-    setAuthCookie(response, accessToken);
+    setAuthCookie(response, accessToken, await cookieOptions());
     response.set("Cache-Control", "no-store");
 
-    const clientOrigin =
-      process.env.CLIENT_ORIGIN || "http://localhost:5173";
-    return response.redirect(`${clientOrigin}/login?authenticated=true`);
+    return clientRedirect(response, "/auth/callback");
   }
 
   async function forgotPassword(request, response) {
@@ -130,6 +179,7 @@ function createAuthController(authService) {
   return {
     signIn,
     registerCompany,
+    registerCustomer,
     signOut,
     me,
     googleCallback,

@@ -14,10 +14,13 @@ test.describe("Backend API & System Health E2E Tests", () => {
     const response = await request.get(`${BACKEND_URL}/api/auth/google`, {
       maxRedirects: 0,
     });
-    // 302 Found redirecting to accounts.google.com
+    // 302 to accounts.google.com when configured, or (mock backend) straight
+    // to the client callback, or to the login error when Google is not set up.
     expect(response.status()).toBe(302);
     const location = response.headers()["location"];
-    expect(location).toContain("accounts.google.com/o/oauth2");
+    expect(location).toMatch(
+      /accounts\.google\.com\/o\/oauth2|\/auth\/callback$|\/login\?error=google_not_configured$/,
+    );
   });
 
   test("Sign-in endpoint validates account credentials correctly", async ({ request }) => {

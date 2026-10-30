@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { ROUTES } from "../../router/routes";
+import { usePlatformSettings } from "../common/platformSettingsContext";
 
 interface SolutionsSectionProps {
   onOpenDemo?: (industry?: string) => void;
 }
 
 export function SolutionsSection({ onOpenDemo }: SolutionsSectionProps) {
+  const { allowSelfRegistration } = usePlatformSettings();
   const [activeTab, setActiveTab] = useState<string>("saas");
 
   const tabs = [
@@ -222,12 +224,14 @@ export function SolutionsSection({ onOpenDemo }: SolutionsSectionProps) {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Link
-                    to={ROUTES.REGISTER_COMPANY}
-                    className="magnetic-btn w-full text-center bg-primary hover:bg-primary-container text-white py-3.5 rounded-xl font-bold hover:shadow-lg hover:shadow-primary/30 transition-all text-sm"
-                  >
-                    {current.cta}
-                  </Link>
+                  {allowSelfRegistration && (
+                    <Link
+                      to={ROUTES.REGISTER_COMPANY}
+                      className="magnetic-btn w-full text-center bg-primary hover:bg-primary-container text-white py-3.5 rounded-xl font-bold hover:shadow-lg hover:shadow-primary/30 transition-all text-sm"
+                    >
+                      {current.cta}
+                    </Link>
+                  )}
                   {onOpenDemo && (
                     <button
                       type="button"

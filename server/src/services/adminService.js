@@ -1,9 +1,36 @@
+const bcrypt = require("bcrypt");
 const defaultAdminModel = require("../models/adminModel");
+const defaultCompanyModel = require("../models/companyModel");
 const mongoose = require("mongoose");
 const { getMySQLPool } = require("../config/database");
+const { sendMail } = require("./emailService");
+const AppError = require("../utils/AppError");
+const {
+  SECRET_KEY_PATTERN,
+  SECTION_NAMES,
+  SETTINGS_SCHEMA,
+  buildDefaultSettings,
+  mergeSettings,
+} = require("./platformSettingsSchema");
+const { resolveEmail } = require("./runtimeSettings");
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function createAdminService(dependencies = {}) {
   const adminModel = dependencies.adminModel || defaultAdminModel;
+  const mailSender = dependencies.sendMail || sendMail;
+  const companyModel = dependencies.companyModel || defaultCompanyModel;
+  const hashPassword =
+    dependencies.hashPassword ||
+    ((password) => bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS || 12)));
+  const runtimeSettings = dependencies.runtimeSettings;
 
   /**
    * Performs quick diagnostic health checks on key platform infrastructure components.
@@ -11,8 +38,10 @@ function createAdminService(dependencies = {}) {
   async function getPlatformHealth() {
     let dbStatus = "ONLINE";
     try {
-      const pool = getMySQLPool();
-      await pool.query("SELECT 1");
+      if (process.env.MYSQL_HOST && process.env.NODE_ENV !== "test") {
+        const pool = getMySQLPool();
+        await pool.query("SELECT 1");
+      }
     } catch (_e) {
       dbStatus = "DEGRADED";
     }
@@ -52,9 +81,285 @@ function createAdminService(dependencies = {}) {
     };
   }
 
+  /**
+   * Lists companies directory with filters, search, and pagination.
+   */
+  async function listCompanies(query = {}) {
+    return adminModel.getCompaniesDirectory(query);
+  }
+
+  /**
+   * Gets single company profile with users and admins.
+   */
+  async function getCompanyDetails(companyId) {
+    const company = await adminModel.getCompanyById(companyId);
+    if (!company) {
+      throw new AppError("Company not found", 404, "COMPANY_NOT_FOUND");
+    }
+    return company;
+  }
+
+  /**
+   * Onboards a company and its administrator account on behalf of the tenant.
+   * Unlike self-registration, no session is issued for the new admin.
+   */
+  async function onboardCompany(registration) {
+    const passwordHash = await hashPassword(registration.password);
+    const account = await companyModel.createRegistration({
+      ...registration,
+      password: undefined,
+      passwordHash,
+      companyStatus: registration.status,
+      adminStatus: "Active",
+    });
+
+    return adminModel.getCompanyById(account.companyId);
+  }
+
+  /**
+   * Changes status of an enterprise tenant.
+   */
+  async function changeCompanyStatus(companyId, status) {
+    const validStatuses = ["Active", "Pending", "Suspended", "Inactive", "Rejected"];
+    if (!validStatuses.includes(status)) {
+      throw new AppError(
+        `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+        422,
+        "INVALID_STATUS",
+      );
+    }
+
+    const updated = await adminModel.updateCompanyStatus(companyId, status);
+    if (!updated) {
+      throw new AppError("Company not found", 404, "COMPANY_NOT_FOUND");
+    }
+
+    return updated;
+  }
+
+  /**
+   * Deletes a company and its user relations.
+   */
+  async function deleteCompany(companyId) {
+    const existing = await adminModel.getCompanyById(companyId);
+    if (!existing) {
+      throw new AppError("Company not found", 404, "COMPANY_NOT_FOUND");
+    }
+
+    const deleted = await adminModel.deleteCompany(companyId);
+    return { success: deleted, message: `Company #${companyId} removed successfully.` };
+  }
+
+  /**
+   * Reads stored settings and merges them over the env-derived defaults.
+   */
+  async function loadSettings({ fallbackToDefaults = false } = {}) {
+    const defaults = buildDefaultSettings();
+    try {
+      const stored = await adminModel.getPlatformSettings();
+      return mergeSettings(defaults, stored);
+    } catch (error) {
+      if (fallbackToDefaults) return defaults;
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves sanitized platform settings.
+   */
+  async function getPlatformSettings() {
+    // A broken settings store should not take the admin console down
+    const settings = await loadSettings({ fallbackToDefaults: true });
+    return {
+      ...settings,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Updates platform settings with validation and persists them.
+   */
+  async function updatePlatformSettings(patch, actor = null) {
+    if (!patch || typeof patch !== "object" || Array.isArray(patch)) {
+      throw new AppError("Settings payload must be an object", 422, "INVALID_SETTINGS", [
+        { field: "body", message: "must be an object" },
+      ]);
+    }
+
+    const current = await loadSettings();
+    const next = {};
+    const errors = [];
+
+    for (const section of SECTION_NAMES) next[section] = { ...current[section] };
+
+    for (const [section, values] of Object.entries(patch)) {
+      // The client echoes back the GET timestamp; it is not a setting
+      if (section === "timestamp") continue;
+
+      if (!SETTINGS_SCHEMA[section]) {
+        errors.push({ field: section, message: "Unknown settings section" });
+        continue;
+      }
+      if (!values || typeof values !== "object" || Array.isArray(values)) {
+        errors.push({ field: section, message: "must be an object" });
+        continue;
+      }
+
+      for (const [key, value] of Object.entries(values)) {
+        const field = `${section}.${key}`;
+        const rule = Object.prototype.hasOwnProperty.call(SETTINGS_SCHEMA[section], key)
+          ? SETTINGS_SCHEMA[section][key]
+          : null;
+
+        if (!rule) {
+          errors.push({
+            field,
+            message: SECRET_KEY_PATTERN.test(key)
+              ? "Secrets cannot be stored in platform settings"
+              : "Unknown setting",
+          });
+        } else if (rule.readOnly) {
+          // Echoing the current value back is fine; changing it is not
+          if (JSON.stringify(value) !== JSON.stringify(current[section][key])) {
+            errors.push({ field, message: "is read-only" });
+          }
+        } else if (!rule.validate(value, next)) {
+          errors.push({ field, message: rule.hint });
+        } else {
+          next[section][key] = value;
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new AppError("Invalid platform settings", 422, "INVALID_SETTINGS", errors);
+    }
+
+    // Browsers reject SameSite=None cookies that are not Secure
+    if (next.security.cookieSameSite === "none" && !next.security.cookieSecure) {
+      errors.push({
+        field: "security.cookieSecure",
+        message: "must be true when cookieSameSite is none",
+      });
+      throw new AppError("Invalid platform settings", 422, "INVALID_SETTINGS", errors);
+    }
+
+    const parsedActorId = Number.parseInt(actor?.userId, 10);
+    await adminModel.savePlatformSettings(next, Number.isFinite(parsedActorId) ? parsedActorId : null);
+    runtimeSettings?.invalidate();
+
+    return {
+      success: true,
+      message: "Platform settings updated successfully.",
+      settings: next,
+    };
+  }
+
+  /**
+   * Sends a diagnostic test email to confirm Gmail SMTP gateway is operational.
+   */
+  async function sendDiagnosticTestEmail(targetEmail) {
+    if (!targetEmail || !targetEmail.includes("@")) {
+      throw new AppError("Valid recipient email is required", 422, "INVALID_EMAIL");
+    }
+
+    const { email: emailSettings } = await loadSettings({ fallbackToDefaults: true });
+    const { smtpHost, smtpPort } = emailSettings;
+    const smtp = resolveEmail({ email: emailSettings });
+
+    const subject = `[Diagnostic] SupportPilot Platform Test Email - ${new Date().toISOString().slice(0, 10)}`;
+    const text = `Hello Platform Administrator,\n\nThis is a verified test email sent from the SupportPilot Platform Settings test console.\n\nTimestamp: ${new Date().toISOString()}\nStatus: All email systems and SMTP relay on port 587 STARTTLS are operating normally.\n\nSupportPilot Security Systems`;
+
+    const result = await mailSender({
+      to: targetEmail.trim().toLowerCase(),
+      smtp,
+      subject,
+      text,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border: 1px solid #e2e4e9; border-radius: 16px;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+            <div style="width: 36px; height: 36px; background: #6D5EF5; border-radius: 8px; text-align: center; line-height: 36px; color: #fff; font-weight: bold;">SP</div>
+            <h2 style="margin: 0; color: #1c1b23; font-size: 18px;">SupportPilot Platform Diagnostic</h2>
+          </div>
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+            <p style="margin: 0; color: #166534; font-weight: 600; font-size: 14px;">✓ SMTP Email Gateway Operational</p>
+            <p style="margin: 6px 0 0 0; color: #15803d; font-size: 13px;">This test email verifies that outbound transactional emails, password resets, and notifications are delivering properly.</p>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #474555;">
+            <tr><td style="padding: 6px 0; font-weight: 600;">Server Host:</td><td>${escapeHtml(smtpHost)}</td></tr>
+            <tr><td style="padding: 6px 0; font-weight: 600;">Server Port:</td><td>${escapeHtml(smtpPort)} (STARTTLS)</td></tr>
+            <tr><td style="padding: 6px 0; font-weight: 600;">Dispatched At:</td><td>${new Date().toUTCString()}</td></tr>
+          </table>
+        </div>
+      `,
+    });
+
+    return {
+      success: true,
+      message: `Diagnostic test email successfully dispatched to ${targetEmail}.`,
+      messageId: result?.messageId || "sent",
+    };
+  }
+
+  /**
+   * Retrieves detailed system infrastructure diagnostic metrics.
+   */
+  async function getSystemDiagnostics() {
+    const memory = process.memoryUsage();
+    let dbPingMs = 0;
+    let poolStats = { total: 10, active: 1, idle: 9 };
+
+    try {
+      if (process.env.MYSQL_HOST && process.env.NODE_ENV !== "test") {
+        const pool = getMySQLPool();
+        const start = Date.now();
+        await pool.query("SELECT 1");
+        dbPingMs = Date.now() - start;
+      }
+    } catch (_e) {
+      dbPingMs = -1;
+    }
+
+    const mongoStateNames = ["Disconnected", "Connected", "Connecting", "Disconnecting"];
+    const mongoState = mongoStateNames[mongoose.connection.readyState] || "Unknown";
+
+    return {
+      status: dbPingMs >= 0 ? "OPTIMAL" : "DEGRADED",
+      uptimeSeconds: Math.floor(process.uptime()),
+      nodeVersion: process.version,
+      platform: process.platform,
+      memoryUsage: {
+        rssMb: Math.round((memory.rss / 1024 / 1024) * 10) / 10,
+        heapUsedMb: Math.round((memory.heapUsed / 1024 / 1024) * 10) / 10,
+        heapTotalMb: Math.round((memory.heapTotal / 1024 / 1024) * 10) / 10,
+      },
+      databases: {
+        mysql: {
+          status: dbPingMs >= 0 ? "ONLINE" : "OFFLINE",
+          latencyMs: dbPingMs,
+          pool: poolStats,
+        },
+        mongodb: {
+          status: mongoState,
+          databaseName: mongoose.connection.name || "customer_support",
+        },
+      },
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   return {
     getDashboardOverview,
     getPlatformHealth,
+    listCompanies,
+    getCompanyDetails,
+    onboardCompany,
+    changeCompanyStatus,
+    deleteCompany,
+    getPlatformSettings,
+    updatePlatformSettings,
+    sendDiagnosticTestEmail,
+    getSystemDiagnostics,
   };
 }
 

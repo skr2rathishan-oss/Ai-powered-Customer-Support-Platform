@@ -2,6 +2,38 @@ const EMAIL_PATTERN =
   /^(?!.*\.\.)[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s])[\s\S]{8,128}$/;
+const DEFAULT_PASSWORD_POLICY = { minPasswordLength: 8, requireSpecialChar: true };
+
+function normalizePolicy(policy) {
+  const length = policy?.minPasswordLength;
+  return {
+    minPasswordLength:
+      Number.isInteger(length) && length >= 6 && length <= 128
+        ? length
+        : DEFAULT_PASSWORD_POLICY.minPasswordLength,
+    requireSpecialChar: policy?.requireSpecialChar !== false,
+  };
+}
+
+function buildPasswordPattern(policy) {
+  const { minPasswordLength, requireSpecialChar } = normalizePolicy(policy);
+  const special = requireSpecialChar ? "(?=.*[^A-Za-z0-9\\s])" : "";
+  return new RegExp(
+    `^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)${special}[\\s\\S]{${minPasswordLength},128}$`,
+  );
+}
+
+function passwordPolicyMessage(policy) {
+  const { minPasswordLength, requireSpecialChar } = normalizePolicy(policy);
+  return `Password must be ${minPasswordLength} to 128 characters and include uppercase, lowercase, number${
+    requireSpecialChar ? ", and special character" : ""
+  }`;
+}
+
+function isPasswordAllowed(password, policy) {
+  return typeof password === "string" && buildPasswordPattern(policy).test(password);
+}
+
 const ACCOUNT_TYPES = new Set(["individual", "company"]);
 const COMPANY_REGISTRATION_FIELDS = new Set([
   "companyName",
@@ -83,18 +115,19 @@ function validateSignInPayload(payload) {
 
   if (!password) {
     errors.push({ field: "password", message: "Password is required" });
-  } else if (!PASSWORD_PATTERN.test(password)) {
+  } else if (password.length > 128) {
+    // Sign-in never applies the strength policy: it may have been tightened or
+    // loosened since the password was set.
     errors.push({
       field: "password",
-      message:
-        "Password must be 8 to 128 characters and include at least one uppercase letter, one lowercase letter, one number, and one special character",
+      message: "Password must be at most 128 characters",
     });
   }
 
   return { value: { accountType, email, password }, errors };
 }
 
-function validateCompanyRegistrationPayload(payload) {
+function validateCompanyRegistrationPayload(payload, policy) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return {
       value: {},
@@ -185,12 +218,8 @@ function validateCompanyRegistrationPayload(payload) {
 
   if (!password) {
     errors.push({ field: "password", message: "Password is required" });
-  } else if (!PASSWORD_PATTERN.test(password)) {
-    errors.push({
-      field: "password",
-      message:
-        "Password must be 8 to 128 characters and include uppercase, lowercase, number, and special character",
-    });
+  } else if (!isPasswordAllowed(password, policy)) {
+    errors.push({ field: "password", message: passwordPolicyMessage(policy) });
   }
 
   return {
@@ -236,7 +265,7 @@ function validateForgotPasswordPayload(payload) {
   return { value: { email }, errors };
 }
 
-function validateResetPasswordPayload(payload) {
+function validateResetPasswordPayload(payload, policy) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return {
       value: {},
@@ -254,21 +283,53 @@ function validateResetPasswordPayload(payload) {
 
   if (!password) {
     errors.push({ field: "password", message: "Password is required" });
-  } else if (!PASSWORD_PATTERN.test(password)) {
-    errors.push({
-      field: "password",
-      message:
-        "Password must be 8 to 128 characters and include uppercase, lowercase, number, and special character",
-    });
+  } else if (!isPasswordAllowed(password, policy)) {
+    errors.push({ field: "password", message: passwordPolicyMessage(policy) });
   }
 
   return { value: { token, password }, errors };
 }
 
+const ONBOARDING_STATUSES = new Set(["Active", "Pending"]);
+
+/**
+ * Validates a company onboarded by a Platform Admin: the same fields as
+ * self-registration plus the initial company status.
+ */
+function validateCompanyOnboardingPayload(payload, policy) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return validateCompanyRegistrationPayload(payload, policy);
+  }
+
+  const { status, ...registration } = payload;
+  const result = validateCompanyRegistrationPayload(registration, policy);
+  const companyStatus = normalizedString(status) || "Active";
+
+  if (!ONBOARDING_STATUSES.has(companyStatus)) {
+    result.errors.push({
+      field: "status",
+      message: "Status must be either Active or Pending",
+    });
+  }
+
+  return {
+    value: { ...result.value, status: companyStatus },
+    errors: result.errors,
+  };
+}
+
 module.exports = {
+  EMAIL_PATTERN,
+  PASSWORD_PATTERN,
+  DEFAULT_PASSWORD_POLICY,
+  buildPasswordPattern,
+  passwordPolicyMessage,
+  isPasswordAllowed,
+  NAME_PATTERN,
   INDUSTRIES,
   validateSignInPayload,
   validateCompanyRegistrationPayload,
+  validateCompanyOnboardingPayload,
   validateForgotPasswordPayload,
   validateResetPasswordPayload,
 };

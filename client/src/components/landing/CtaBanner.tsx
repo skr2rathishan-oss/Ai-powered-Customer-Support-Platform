@@ -1,11 +1,13 @@
 import { Link } from "react-router";
 import { ROUTES } from "../../router/routes";
+import { usePlatformSettings } from "../common/platformSettingsContext";
 
 interface CtaBannerProps {
   onBookDemo?: () => void;
 }
 
 export function CtaBanner({ onBookDemo }: CtaBannerProps) {
+  const { allowSelfRegistration } = usePlatformSettings();
   return (
     <section className="py-16 bg-surface-container-low px-6">
       <div className="max-w-5xl mx-auto bg-gradient-to-r from-primary/10 via-primary/5 to-primary/15 border border-primary/25 rounded-3xl p-10 sm:p-16 text-center reveal glass backdrop-blur-2xl shadow-xl shadow-primary/5">
@@ -24,13 +26,15 @@ export function CtaBanner({ onBookDemo }: CtaBannerProps) {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Link
-            to={ROUTES.REGISTER_COMPANY}
-            className="magnetic-btn w-full sm:w-auto bg-primary hover:bg-primary-container text-white px-10 py-4 rounded-xl text-base font-bold shadow-xl shadow-primary/30 transition-all text-center flex items-center justify-center gap-2"
-          >
-            <span>Start Free Trial</span>
-            <span className="material-symbols-outlined text-lg">arrow_forward</span>
-          </Link>
+          {allowSelfRegistration && (
+            <Link
+              to={ROUTES.REGISTER_COMPANY}
+              className="magnetic-btn w-full sm:w-auto bg-primary hover:bg-primary-container text-white px-10 py-4 rounded-xl text-base font-bold shadow-xl shadow-primary/30 transition-all text-center flex items-center justify-center gap-2"
+            >
+              <span>Start Free Trial</span>
+              <span className="material-symbols-outlined text-lg">arrow_forward</span>
+            </Link>
+          )}
           <button
             type="button"
             onClick={onBookDemo}

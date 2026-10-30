@@ -1,16 +1,16 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { useCallback, useEffect, useState } from "react";
 import { AdminRouteGuard } from "../../components/admin/AdminRouteGuard";
 import { AdminLayout } from "../../components/admin/AdminLayout";
 import { StatsGrid } from "../../components/admin/StatsGrid";
 import { GrowthChart } from "../../components/admin/GrowthChart";
 import { DistributionDonut } from "../../components/admin/DistributionDonut";
 import { RecentCompaniesTable } from "../../components/admin/RecentCompaniesTable";
+import { OnboardCompanyModal } from "../../components/admin/companies/OnboardCompanyModal";
 import {
   fetchAdminDashboard,
+  type CompanyDetailData,
   type DashboardOverviewData,
 } from "../../services/admin";
-import { ROUTES } from "../../router/routes";
 
 export function PlatformAdminDashboardPage() {
   const [data, setData] = useState<DashboardOverviewData | null>(null);
@@ -18,14 +18,16 @@ export function PlatformAdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState("12months");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [onboardOpen, setOnboardOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  async function loadData(tf = timeframe, isRefresh = false) {
+  const loadData = useCallback(async (selectedTimeframe: string, isRefresh = false) => {
     if (isRefresh) setIsRefreshing(true);
     else setLoading(true);
     setError(null);
 
     try {
-      const overview = await fetchAdminDashboard(tf);
+      const overview = await fetchAdminDashboard(selectedTimeframe);
       setData(overview);
     } catch (err: unknown) {
       setError(
@@ -37,14 +39,21 @@ export function PlatformAdminDashboardPage() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     loadData(timeframe);
-  }, [timeframe]);
+  }, [timeframe, loadData]);
 
   function handleTimeframeChange(newTf: string) {
     setTimeframe(newTf);
+  }
+
+  function handleOnboarded(company: CompanyDetailData) {
+    setOnboardOpen(false);
+    setToastMessage(`${company.companyName} onboarded successfully.`);
+    setTimeout(() => setToastMessage(null), 4000);
+    loadData(timeframe, true);
   }
 
   function handleExportReport() {
@@ -133,15 +142,16 @@ export function PlatformAdminDashboardPage() {
                   </span>
                   Download Report
                 </button>
-                <Link
-                  to={ROUTES.REGISTER_COMPANY}
-                  className="flex items-center gap-2 bg-[#6D5EF5] text-white px-4 py-2 rounded-xl font-bold text-xs hover:shadow-lg hover:shadow-[#6D5EF5]/20 hover:-translate-y-0.5 transition-all active:scale-95 whitespace-nowrap group no-underline shadow-xs"
+                <button
+                  type="button"
+                  onClick={() => setOnboardOpen(true)}
+                  className="flex items-center gap-2 bg-[#6D5EF5] text-white px-4 py-2 rounded-xl font-bold text-xs hover:shadow-lg hover:shadow-[#6D5EF5]/20 hover:-translate-y-0.5 transition-all active:scale-95 whitespace-nowrap group shadow-xs cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[18px] group-hover:rotate-12 transition-transform">
                     add
                   </span>
-                  Register Company
-                </Link>
+                  Onboard Company
+                </button>
               </div>
             </header>
 
@@ -162,6 +172,19 @@ export function PlatformAdminDashboardPage() {
             <RecentCompaniesTable companies={data.recentCompanies} />
           </div>
         ) : null}
+
+        {toastMessage && (
+          <div className="fixed bottom-6 right-24 z-50 bg-[#1c1b23] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-fadeIn">
+            <span className="material-symbols-outlined text-emerald-400 text-base">check_circle</span>
+            {toastMessage}
+          </div>
+        )}
+
+        <OnboardCompanyModal
+          open={onboardOpen}
+          onClose={() => setOnboardOpen(false)}
+          onOnboarded={handleOnboarded}
+        />
       </AdminLayout>
     </AdminRouteGuard>
   );
