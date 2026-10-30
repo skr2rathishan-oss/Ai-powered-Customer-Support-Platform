@@ -1,5 +1,6 @@
 import type {
   CreateCustomerTicketInput,
+  CustomerOrder,
   CustomerMe,
   CustomerRegistrationValues,
   CustomerReplyResult,
@@ -127,3 +128,11 @@ export async function createCustomerTicket(
 }
 
 export { getErrorCode, getFieldErrors } from "./tickets";
+
+export async function listCustomerOrders(): Promise<CustomerOrder[]> {
+  const response = await apiRequest<Envelope<{ orders: CustomerOrder[] }>>(
+    "/api/customer/orders",
+    { cache: "no-store" },
+  );
+  return response.data.orders;
+}

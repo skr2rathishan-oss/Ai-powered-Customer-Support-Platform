@@ -912,6 +912,36 @@ async function buildMockApp() {
     ttlMs: Number(process.env.MOCK_SETTINGS_TTL_MS || 500),
   });
 
+  // Casey's clothing orders: same shape as models/orderModel.js
+  const orders = [
+    {
+      orderId: 2, companyId: 1, customerId: 20, orderNumber: "AC-10517", status: "Shipped",
+      shippingFee: 0, totalAmount: 13800, currency: "LKR", shippingAddress: "42 Galle Road, Colombo 03",
+      carrier: "Acme Express", trackingNumber: "AX7731942LK", orderedAt: daysAgo(3),
+      estimatedDelivery: daysAgo(-1).slice(0, 10), deliveredAt: null,
+      items: [
+        { itemId: 2, productName: "Denim Trucker Jacket", size: "L", color: "Indigo", quantity: 1, unitPrice: 8900 },
+        { itemId: 3, productName: "Graphic Cotton T-Shirt", size: "L", color: "Black", quantity: 2, unitPrice: 2450 },
+      ],
+    },
+    {
+      orderId: 1, companyId: 1, customerId: 20, orderNumber: "AC-10482", status: "Delivered",
+      shippingFee: 0, totalAmount: 12700, currency: "LKR", shippingAddress: "42 Galle Road, Colombo 03",
+      carrier: "Acme Express", trackingNumber: "AX7690155LK", orderedAt: daysAgo(18),
+      estimatedDelivery: null, deliveredAt: daysAgo(15),
+      items: [
+        { itemId: 1, productName: "Classic Oxford Shirt", size: "M", color: "White", quantity: 2, unitPrice: 3950 },
+        { itemId: 4, productName: "Slim Fit Chinos", size: "32", color: "Beige", quantity: 1, unitPrice: 4800 },
+      ],
+    },
+  ];
+  const orderModel = {
+    listCustomerOrders: async (companyId, customerId) =>
+      orders
+        .filter((o) => o.companyId === Number(companyId) && o.customerId === Number(customerId))
+        .map(({ companyId: _c, customerId: _u, ...order }) => ({ ...order, items: order.items.map((i) => ({ ...i })) })),
+  };
+
   // AI chat sessions: same scoping and shapes as models/chatModel.js
   const chatSessions = [];
   const chatMessages = [];
@@ -994,6 +1024,7 @@ async function buildMockApp() {
   const realApp = createApp({
     runtimeSettings,
     chatModel,
+    orderModel,
     isGoogleConfigured: () => process.env.MOCK_GOOGLE !== "false",
     userModel,
     companyModel,

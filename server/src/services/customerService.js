@@ -3,6 +3,7 @@ const defaultTicketModel = require("../models/ticketModel");
 const defaultTicketReplyModel = require("../models/ticketReplyModel");
 const defaultFaqModel = require("../models/faqModel");
 const defaultAiSettingsModel = require("../models/aiSettingsModel");
+const defaultOrderModel = require("../models/orderModel");
 const AppError = require("../utils/AppError");
 const { validateReplyPayload } = require("../validators/replyValidator");
 const {
@@ -66,6 +67,7 @@ function createCustomerService(dependencies = {}) {
     dependencies.ticketReplyModel || defaultTicketReplyModel;
   const faqModel = dependencies.faqModel || defaultFaqModel;
   const aiSettingsModel = dependencies.aiSettingsModel || defaultAiSettingsModel;
+  const orderModel = dependencies.orderModel || defaultOrderModel;
   const { requireActiveCustomer } = createCustomerContextResolver(customerModel);
 
   async function loadAssistant(companyId) {
@@ -119,6 +121,12 @@ function createCustomerService(dependencies = {}) {
     ].sort();
 
     return { faqs, categories };
+  }
+
+  // Scoped to the signed-in customer by the model's WHERE clause
+  async function listOrders(auth) {
+    const { companyId, userId } = await requireActiveCustomer(auth);
+    return { orders: await orderModel.listCustomerOrders(companyId, userId) };
   }
 
   async function listTickets(auth, rawQuery) {
@@ -245,7 +253,7 @@ function createCustomerService(dependencies = {}) {
     return { ticket: toCustomerTicket(row) };
   }
 
-  return { getProfile, listFaqs, listTickets, getTicket, createReply, createTicket };
+  return { getProfile, listFaqs, listOrders, listTickets, getTicket, createReply, createTicket };
 }
 
 module.exports = { createCustomerService, toCustomerTicket };

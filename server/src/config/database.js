@@ -114,6 +114,8 @@ async function initMySQLSchema() {
   await ensureCompanyAiSettingsTable(pool);
   await ensureCustomerSupport(pool);
   await ensureChatTables(pool);
+  await ensureOrderTables(pool);
+  await ensureForeignKeys(pool);
   try {
     const [columns] = await pool.query(
       "SHOW COLUMNS FROM users LIKE 'google_id'",
@@ -469,6 +471,144 @@ async function ensureChatTables(pool) {
   } catch (error) {
     if (process.env.NODE_ENV !== "test") {
       console.warn("Chat schema notice:", error.message);
+    }
+  }
+}
+
+async function ensureOrderTables(pool) {
+  try {
+    // A customer's purchase from the company's store. The AI assistant reads
+    // these to answer order status, delivery and tracking questions.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        order_id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        customer_id INT NOT NULL,
+        order_number VARCHAR(30) NOT NULL,
+        status ENUM('Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned') NOT NULL DEFAULT 'Processing',
+        shipping_fee DECIMAL(10, 2) NOT NULL DEFAULT 0,
+        total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+        currency CHAR(3) NOT NULL DEFAULT 'LKR',
+        shipping_address VARCHAR(255) NULL,
+        carrier VARCHAR(60) NULL,
+        tracking_number VARCHAR(60) NULL,
+        ordered_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        estimated_delivery DATE NULL,
+        delivered_at DATETIME NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_orders_company_number (company_id, order_number),
+        INDEX idx_orders_customer (company_id, customer_id, ordered_at),
+        CONSTRAINT fk_orders_company FOREIGN KEY (company_id)
+          REFERENCES companies (company_id) ON DELETE CASCADE,
+        CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id)
+          REFERENCES users (user_id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS order_items (
+        item_id INT AUTO_INCREMENT PRIMARY KEY,
+        order_id INT NOT NULL,
+        product_name VARCHAR(150) NOT NULL,
+        size VARCHAR(20) NULL,
+        color VARCHAR(40) NULL,
+        quantity SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+        unit_price DECIMAL(10, 2) NOT NULL,
+        INDEX idx_order_items_order (order_id),
+        CONSTRAINT fk_order_items_order FOREIGN KEY (order_id)
+          REFERENCES orders (order_id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Order schema notice:", error.message);
+    }
+  }
+}
+
+/**
+ * Relationships that older databases only enforced in application code.
+ * Each key is added once, and only when no existing row would break it, so
+ * startup never fails on legacy data; the skipped key is reported instead.
+ */
+const FOREIGN_KEYS = [
+  {
+    name: "fk_tickets_customer_user",
+    table: "tickets",
+    column: "customer_id",
+    refTable: "users",
+    refColumn: "user_id",
+    onDelete: "SET NULL",
+  },
+  {
+    name: "fk_tickets_assigned_agent",
+    table: "tickets",
+    column: "assigned_agent_id",
+    refTable: "users",
+    refColumn: "user_id",
+    onDelete: "SET NULL",
+  },
+  {
+    name: "fk_ticket_replies_ticket",
+    table: "ticket_replies",
+    column: "ticket_id",
+    refTable: "tickets",
+    refColumn: "ticket_id",
+    onDelete: "CASCADE",
+  },
+  {
+    name: "fk_ticket_replies_author",
+    table: "ticket_replies",
+    column: "author_id",
+    refTable: "users",
+    refColumn: "user_id",
+    onDelete: "SET NULL",
+  },
+  {
+    name: "fk_ai_settings_company",
+    table: "company_ai_settings",
+    column: "company_id",
+    refTable: "companies",
+    refColumn: "company_id",
+    onDelete: "CASCADE",
+  },
+];
+
+async function ensureForeignKeys(pool) {
+  for (const key of FOREIGN_KEYS) {
+    try {
+      const [existing] = await pool.query(
+        `SELECT 1 FROM information_schema.KEY_COLUMN_USAGE
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+            AND REFERENCED_TABLE_NAME = ?`,
+        [key.table, key.column, key.refTable],
+      );
+      if (existing.length > 0) continue;
+
+      const [[{ orphans }]] = await pool.query(
+        `SELECT COUNT(*) AS orphans FROM \`${key.table}\` AS c
+           LEFT JOIN \`${key.refTable}\` AS p ON p.\`${key.refColumn}\` = c.\`${key.column}\`
+          WHERE c.\`${key.column}\` IS NOT NULL AND p.\`${key.refColumn}\` IS NULL`,
+      );
+      if (Number(orphans) > 0) {
+        if (process.env.NODE_ENV !== "test") {
+          console.warn(
+            `Foreign key ${key.name} skipped: ${orphans} ${key.table} row(s) point at missing ${key.refTable}`,
+          );
+        }
+        continue;
+      }
+
+      await pool.query(
+        `ALTER TABLE \`${key.table}\` ADD CONSTRAINT \`${key.name}\`
+           FOREIGN KEY (\`${key.column}\`) REFERENCES \`${key.refTable}\` (\`${key.refColumn}\`)
+           ON DELETE ${key.onDelete} ON UPDATE CASCADE`,
+      );
+    } catch (error) {
+      if (process.env.NODE_ENV !== "test") {
+        console.warn(`Foreign key ${key.name} notice:`, error.message);
+      }
     }
   }
 }

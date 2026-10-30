@@ -49,6 +49,12 @@ test.describe("Role dashboards", () => {
     await expect(page.getByRole("heading", { name: /How can we help\?/ })).toBeVisible();
     await expect(page.getByRole("heading", { name: "My recent tickets" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Popular answers" })).toBeVisible();
+
+    const orders = page.getByRole("region", { name: "My orders" });
+    await expect(page.getByRole("heading", { name: "My orders" })).toBeVisible();
+    await expect(orders.getByText("AC-10517")).toBeVisible();
+    await expect(orders.getByText("Denim Trucker Jacket")).toBeVisible();
+    await expect(orders.getByText(/AX7731942LK/)).toBeVisible();
     await page.screenshot({ path: "test-results/dashboard-customer.png", fullPage: true });
 
     await page.setViewportSize({ width: 390, height: 844 });

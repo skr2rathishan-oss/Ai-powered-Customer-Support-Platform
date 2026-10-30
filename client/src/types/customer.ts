@@ -104,3 +104,30 @@ export interface CreateCustomerTicketInput {
   subject: string;
   description: string;
 }
+
+export type OrderStatus = "Processing" | "Shipped" | "Delivered" | "Cancelled" | "Returned";
+
+export interface OrderItem {
+  itemId: number;
+  productName: string;
+  size: string | null;
+  color: string | null;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface CustomerOrder {
+  orderId: number;
+  orderNumber: string;
+  status: OrderStatus;
+  shippingFee: number;
+  totalAmount: number;
+  currency: string;
+  shippingAddress: string | null;
+  carrier: string | null;
+  trackingNumber: string | null;
+  orderedAt: string;
+  estimatedDelivery: string | null;
+  deliveredAt: string | null;
+  items: OrderItem[];
+}

@@ -14,6 +14,7 @@ function createCustomerRouter(customerService) {
 
   router.get("/me", asyncHandler(controller.me));
   router.get("/faqs", asyncHandler(controller.listFaqs));
+  router.get("/orders", asyncHandler(controller.listOrders));
   router.get("/tickets", asyncHandler(controller.listTickets));
   router.post("/tickets", asyncHandler(controller.createTicket));
   router.get("/tickets/:ticketId", asyncHandler(controller.getTicket));

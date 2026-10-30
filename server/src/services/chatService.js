@@ -3,6 +3,7 @@ const defaultCustomerModel = require("../models/customerModel");
 const defaultTicketModel = require("../models/ticketModel");
 const defaultFaqModel = require("../models/faqModel");
 const defaultAiSettingsModel = require("../models/aiSettingsModel");
+const defaultOrderModel = require("../models/orderModel");
 const AppError = require("../utils/AppError");
 const { createCustomerContextResolver } = require("./customerContext");
 const { resolveAiSettings } = require("./aiSettingsService");
@@ -55,11 +56,24 @@ function createChatService(dependencies = {}) {
   const ticketModel = dependencies.ticketModel || defaultTicketModel;
   const faqModel = dependencies.faqModel || defaultFaqModel;
   const aiSettingsModel = dependencies.aiSettingsModel || defaultAiSettingsModel;
+  const orderModel = dependencies.orderModel || defaultOrderModel;
   const aiResponder = dependencies.aiResponder || createAiResponder(dependencies);
   const { requireActiveCustomer } = createCustomerContextResolver(customerModel);
 
   async function loadSettings(companyId) {
     return resolveAiSettings(await aiSettingsModel.findAiSettings(companyId));
+  }
+
+  // Orders only enrich the answer, so a failed lookup must not break the chat
+  async function loadOrders(context) {
+    try {
+      return await orderModel.listCustomerOrders(context.companyId, context.userId);
+    } catch (error) {
+      if (process.env.NODE_ENV !== "test") {
+        console.warn("[AI] Could not load the customer's orders:", error.message);
+      }
+      return [];
+    }
   }
 
   function assistantInfo(settings) {
@@ -190,12 +204,19 @@ function createChatService(dependencies = {}) {
     const customerMessage = await chatModel.addMessage(session.sessionId, "customer", text);
     const added = [customerMessage];
 
-    const faqs = await faqModel.listFaqs(context.companyId, { status: "published" });
+    const [faqs, orders] = await Promise.all([
+      faqModel.listFaqs(context.companyId, { status: "published" }),
+      loadOrders(context),
+    ]);
     const verdict = await aiResponder.respond({
       companyName: context.companyName,
       settings,
       faqs,
       history: [...history, customerMessage],
+      customer: {
+        name: [context.firstName, context.lastName].filter(Boolean).join(" ").trim() || null,
+        orders,
+      },
     });
 
     const confident = verdict.confidence >= settings.confidenceThreshold;

@@ -94,12 +94,24 @@ test("customer AI chat API", async (context) => {
   let verdicts;
   let createdTickets;
   let openTicketCount;
+  let orders;
+  let responderRequests;
 
   const aiResponder = {
     isAiEnabled: () => false,
-    respond: async () => ({ source: "test", ticketSubject: null, ticketPriority: "Medium", ...verdicts.shift() }),
+    respond: async (request) => {
+      responderRequests.push(request);
+      return { source: "test", ticketSubject: null, ticketPriority: "Medium", ...verdicts.shift() };
+    },
   };
   const dependencies = {
+    orderModel: {
+      listCustomerOrders: async (companyId, customerId) => {
+        assert.deepEqual([companyId, customerId], [7, 20]);
+        if (orders instanceof Error) throw orders;
+        return orders;
+      },
+    },
     customerModel: { findCustomerContext: async (userId) => (userId === 20 ? { ...baseContext } : null) },
     aiSettingsModel: { findAiSettings: async () => settings },
     faqModel: {
@@ -140,6 +152,8 @@ test("customer AI chat API", async (context) => {
     verdicts = [];
     createdTickets = [];
     openTicketCount = 0;
+    orders = [];
+    responderRequests = [];
   });
 
   await context.test("only signed-in customers can chat", async () => {
@@ -177,6 +191,26 @@ test("customer AI chat API", async (context) => {
     assert.equal(json.data.messages[1].body, "Use Forgot password.");
     assert.equal(json.data.session.status, "Active");
     assert.equal(createdTickets.length, 0);
+  });
+
+  await context.test("the assistant is given the customer's own orders", async () => {
+    orders = [{ orderNumber: "AC-10517", status: "Shipped", items: [] }];
+    const { data } = await (await call("POST", "/sessions")).json();
+    verdicts.push({ answer: "Order AC-10517 has shipped.", confidence: 90, needsHuman: false });
+
+    const response = await call("POST", `/sessions/${data.session.sessionId}/messages`, { message: "Where is my order?" });
+    assert.equal(response.status, 201);
+    assert.deepEqual(responderRequests[0].customer, { name: "Casey Customer", orders });
+  });
+
+  await context.test("a failed order lookup does not stop the chat", async () => {
+    orders = new Error("orders table missing");
+    const { data } = await (await call("POST", "/sessions")).json();
+    verdicts.push({ answer: "Use Forgot password.", confidence: 92, needsHuman: false });
+
+    const response = await call("POST", `/sessions/${data.session.sessionId}/messages`, { message: "Reset password?" });
+    assert.equal(response.status, 201);
+    assert.deepEqual(responderRequests[0].customer.orders, []);
   });
 
   await context.test("repeated low-confidence answers escalate to an assigned ticket with the transcript", async () => {

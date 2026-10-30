@@ -1,7 +1,8 @@
 -- SupportPilot database schema (MySQL 8 / TiDB)
 -- Exported from the live database with SHOW CREATE TABLE. Tables are listed in
 -- dependency order, so the file can be run top to bottom on an empty database.
--- The server also creates any missing table or column at startup (initMySQLSchema).
+-- The server also creates any missing table, column or foreign key at startup (initMySQLSchema).
+-- Refresh the live export with: cd server && npm run db:schema  (writes docs/database/live-schema.json)
 
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -101,7 +102,10 @@ CREATE TABLE IF NOT EXISTS `tickets` (
   KEY `fk_tickets_company` (`company_id`),
   KEY `fk_tickets_customer` (`customer_id`),
   KEY `idx_tickets_customer` (`company_id`,`customer_id`,`created_at`),
-  CONSTRAINT `fk_tickets_company` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE ON UPDATE CASCADE
+  KEY `fk_tickets_assigned_agent` (`assigned_agent_id`),
+  CONSTRAINT `fk_tickets_company` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_tickets_customer_user` FOREIGN KEY (`customer_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_tickets_assigned_agent` FOREIGN KEY (`assigned_agent_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 -- ticket_replies
@@ -116,7 +120,11 @@ CREATE TABLE IF NOT EXISTS `ticket_replies` (
   `body` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`reply_id`) ,
-  KEY `idx_ticket_replies_ticket` (`company_id`,`ticket_id`,`created_at`,`reply_id`)
+  KEY `idx_ticket_replies_ticket` (`company_id`,`ticket_id`,`created_at`,`reply_id`),
+  KEY `fk_ticket_replies_ticket` (`ticket_id`),
+  KEY `fk_ticket_replies_author` (`author_id`),
+  CONSTRAINT `fk_ticket_replies_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`ticket_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_ticket_replies_author` FOREIGN KEY (`author_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- faqs
@@ -159,7 +167,8 @@ CREATE TABLE IF NOT EXISTS `company_ai_settings` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`settings_id`) ,
-  UNIQUE KEY `uq_company_ai_settings_company` (`company_id`)
+  UNIQUE KEY `uq_company_ai_settings_company` (`company_id`),
+  CONSTRAINT `fk_ai_settings_company` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- platform_settings
@@ -202,6 +211,46 @@ CREATE TABLE IF NOT EXISTS `chat_messages` (
   PRIMARY KEY (`message_id`) ,
   KEY `idx_chat_messages_session` (`session_id`,`message_id`),
   CONSTRAINT `fk_chat_messages_session` FOREIGN KEY (`session_id`) REFERENCES `chat_sessions` (`session_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- orders
+CREATE TABLE IF NOT EXISTS `orders` (
+  `order_id` int NOT NULL AUTO_INCREMENT,
+  `company_id` int NOT NULL,
+  `customer_id` int NOT NULL,
+  `order_number` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` enum('Processing','Shipped','Delivered','Cancelled','Returned') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Processing',
+  `shipping_fee` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `total_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `currency` char(3) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'LKR',
+  `shipping_address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `carrier` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tracking_number` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ordered_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `estimated_delivery` date DEFAULT NULL,
+  `delivered_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`order_id`) ,
+  UNIQUE KEY `uq_orders_company_number` (`company_id`,`order_number`),
+  KEY `idx_orders_customer` (`company_id`,`customer_id`,`ordered_at`),
+  KEY `fk_orders_customer` (`customer_id`),
+  CONSTRAINT `fk_orders_company` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_orders_customer` FOREIGN KEY (`customer_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- order_items
+CREATE TABLE IF NOT EXISTS `order_items` (
+  `item_id` int NOT NULL AUTO_INCREMENT,
+  `order_id` int NOT NULL,
+  `product_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `size` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `color` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `quantity` smallint unsigned NOT NULL DEFAULT '1',
+  `unit_price` decimal(10,2) NOT NULL,
+  PRIMARY KEY (`item_id`) ,
+  KEY `idx_order_items_order` (`order_id`),
+  CONSTRAINT `fk_order_items_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

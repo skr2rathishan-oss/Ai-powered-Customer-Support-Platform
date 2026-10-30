@@ -88,6 +88,7 @@ test("customer API", async (context) => {
   const ticketReplyModel = { listReplies: async () => [] };
   const faqModel = { listFaqs: record("listFaqs"), listFaqMeta: record("listFaqMeta") };
   const aiSettingsModel = { findAiSettings: record("findAiSettings") };
+  const orderModel = { listCustomerOrders: record("listCustomerOrders") };
   // Company admin guard must reject customers before touching this
   const companyPortalModel = {
     findCompanyAdminContext: async () => {
@@ -101,6 +102,7 @@ test("customer API", async (context) => {
     ticketReplyModel,
     faqModel,
     aiSettingsModel,
+    orderModel,
     companyPortalModel,
   });
   context.after(() => server.close());
@@ -136,12 +138,14 @@ test("customer API", async (context) => {
       listFaqs: async () => [],
       listFaqMeta: async () => ({}),
       findAiSettings: async () => null,
+      listCustomerOrders: async () => [],
     };
   });
 
   const routes = [
     ["GET", "/api/customer/me", undefined],
     ["GET", "/api/customer/faqs", undefined],
+    ["GET", "/api/customer/orders", undefined],
     ["GET", "/api/customer/tickets", undefined],
     ["POST", "/api/customer/tickets", { subject: "Hello there", description: "d" }],
     ["GET", "/api/customer/tickets/1", undefined],
@@ -386,6 +390,24 @@ test("customer API", async (context) => {
     assert.equal(data.faqs.length, 3);
     assert.deepEqual(Object.keys(data.faqs[0]).sort(), ["answer", "category", "faqId", "question"]);
     assert.deepEqual(data.categories, ["Account", "Billing"]);
+  });
+
+  await context.test("GET /orders lists only the signed-in customer's orders", async () => {
+    const order = {
+      orderId: 3,
+      orderNumber: "AC-10517",
+      status: "Shipped",
+      totalAmount: 13800,
+      currency: "LKR",
+      items: [{ itemId: 1, productName: "Denim Trucker Jacket", size: "L", color: "Indigo", quantity: 1, unitPrice: 8900 }],
+    };
+    impl.listCustomerOrders = async () => [order];
+
+    const response = await call("GET", "/api/customer/orders");
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).data, { orders: [order] });
+    // Company and customer come from the database context, never the request
+    assert.deepEqual(calls.listCustomerOrders, [[7, 20]]);
   });
 
   await context.test("GET /faqs 422 for an oversize search", async () => {

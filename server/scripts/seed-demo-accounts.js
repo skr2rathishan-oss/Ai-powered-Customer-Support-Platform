@@ -7,7 +7,8 @@
  * Safe to run repeatedly. Demo accounts get their documented password and
  * Active status back on every run. The Platform Admin is only created when
  * missing, so an existing admin password is never overwritten. Sample tickets
- * and FAQs are only added while the demo company has none.
+ * are only added while the demo company has none, clothing-store FAQs are
+ * added when missing, and sample orders while the demo customer has none.
  */
 require("dotenv").config({ quiet: true });
 
@@ -23,11 +24,11 @@ const DEMO = {
   },
   company: {
     name: "Acme Demo Co",
-    industry: "SaaS",
+    industry: "Fashion & Apparel",
     businessEmail: "support@acme.example",
     phone: "+94 11 234 5678",
     website: "https://acme.example",
-    description: "Demo tenant used to try every SupportPilot portal.",
+    description: "Online clothing store (demo tenant used to try every SupportPilot portal).",
   },
   companyAdmin: {
     firstName: "Ada",
@@ -47,6 +48,123 @@ const DEMO = {
   },
 };
 
+// [question, answer, category]: Acme Demo Co is an online clothing store, so
+// these are what its AI assistant answers from
+const CLOTHING_FAQS = [
+  [
+    "How long does delivery take?",
+    "Orders within Colombo arrive in 1-2 working days and the rest of Sri Lanka in 3-5 working days. International orders take 7-14 working days.",
+    "Shipping",
+  ],
+  [
+    "How much does shipping cost?",
+    "Delivery is free on orders over LKR 10,000. Below that, island-wide delivery is LKR 450. International shipping is calculated at checkout.",
+    "Shipping",
+  ],
+  [
+    "How can I track my order?",
+    "When your order ships we email you the courier name and tracking number. You can also ask our assistant \"Where is my order?\" at any time.",
+    "Orders",
+  ],
+  [
+    "Can I change or cancel my order?",
+    "You can change the size, colour or address, or cancel the order, until it ships (usually within 12 hours of ordering). Ask our team in chat and they will update it. Shipped orders cannot be cancelled, but you can return them.",
+    "Orders",
+  ],
+  [
+    "What is your return policy?",
+    "Unworn items with the tags attached can be returned within 30 days of delivery for a full refund. Underwear, swimwear and items marked Final Sale cannot be returned.",
+    "Returns",
+  ],
+  [
+    "How do I exchange an item for a different size?",
+    "Contact us with your order number and the size you need. We email a free return label and ship the new size as soon as the courier collects the original item.",
+    "Returns",
+  ],
+  [
+    "When will I get my refund?",
+    "Refunds go back to your original payment method within 5-7 working days after we receive and check the returned item. Cash on delivery orders are refunded by bank transfer.",
+    "Returns",
+  ],
+  [
+    "What should I do if my item arrives damaged or wrong?",
+    "We're sorry! Send us a photo within 7 days of delivery and we will replace the item or refund you in full, including shipping.",
+    "Orders",
+  ],
+  [
+    "How do I find my size?",
+    "Every product page has a size chart in centimetres. If you are between sizes, choose the larger size for shirts and jackets and your usual waist size for jeans and chinos.",
+    "Sizing",
+  ],
+  [
+    "How should I wash my clothes?",
+    "Always follow the care label. In general, wash denim and dark colours inside out in cold water, and dry knitwear flat so it keeps its shape.",
+    "Products",
+  ],
+  [
+    "Which payment methods do you accept?",
+    "We accept Visa, Mastercard, American Express, bank transfer, and cash on delivery for orders up to LKR 25,000.",
+    "Payments",
+  ],
+];
+
+// Order history for the demo customer. Days are counted back from today, so
+// the "in transit" order always looks current
+const CUSTOMER_ORDERS = [
+  {
+    orderNumber: "AC-10533",
+    status: "Processing",
+    orderedDaysAgo: 0,
+    deliveryInDays: 4,
+    shippingFee: 450,
+    items: [["Floral Wrap Summer Dress", "S", "Blue", 1, 6500]],
+  },
+  {
+    orderNumber: "AC-10517",
+    status: "Shipped",
+    orderedDaysAgo: 3,
+    deliveryInDays: 1,
+    shippingFee: 0,
+    carrier: "Acme Express",
+    trackingNumber: "AX7731942LK",
+    items: [
+      ["Denim Trucker Jacket", "L", "Indigo", 1, 8900],
+      ["Graphic Cotton T-Shirt", "L", "Black", 2, 2450],
+    ],
+  },
+  {
+    orderNumber: "AC-10482",
+    status: "Delivered",
+    orderedDaysAgo: 18,
+    deliveredDaysAgo: 15,
+    shippingFee: 0,
+    carrier: "Acme Express",
+    trackingNumber: "AX7690155LK",
+    items: [
+      ["Classic Oxford Shirt", "M", "White", 2, 3950],
+      ["Slim Fit Chinos", "32", "Beige", 1, 4800],
+    ],
+  },
+  {
+    orderNumber: "AC-10455",
+    status: "Cancelled",
+    orderedDaysAgo: 26,
+    shippingFee: 450,
+    items: [["Canvas Low-Top Sneakers", "42", "White", 1, 7800]],
+  },
+  {
+    orderNumber: "AC-10391",
+    status: "Returned",
+    orderedDaysAgo: 41,
+    deliveredDaysAgo: 37,
+    shippingFee: 450,
+    carrier: "Acme Express",
+    trackingNumber: "AX7512208LK",
+    items: [["Wool Blend Crew Sweater", "M", "Grey", 1, 7200]],
+  },
+];
+
+const daysFromNow = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 const hash = (password) => bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS || 12));
 
 async function roleId(db, roleName) {
@@ -94,7 +212,10 @@ async function upsertCompany(db) {
     [company.businessEmail],
   );
   if (existing.length > 0) {
-    await db.execute("UPDATE companies SET status = 'Active' WHERE company_id = ?", [existing[0].company_id]);
+    await db.execute(
+      "UPDATE companies SET status = 'Active', industry = ?, description = ? WHERE company_id = ?",
+      [company.industry, company.description, existing[0].company_id],
+    );
     return existing[0].company_id;
   }
 
@@ -113,8 +234,7 @@ async function seedSampleData(db, { companyId, adminId, agentIds, customerId }) 
     const faqs = [
       ["How do I reset my password?", "Use 'Forgot password' on the sign-in page and follow the emailed link.", "Account", 1],
       ["What are your support hours?", "Our team answers tickets Monday to Friday, 8am to 6pm.", "General", 1],
-      ["Which plans include API access?", "API access is included in the Business and Enterprise plans.", "Billing", 1],
-      ["How do I export my data?", "Draft: export steps are being finalised.", "Account", 0],
+      ["Do you offer gift wrapping?", "Draft: gift wrapping is coming soon.", "Orders", 0],
     ];
     for (const [index, [question, answer, category, published]] of faqs.entries()) {
       await db.execute(
@@ -125,18 +245,75 @@ async function seedSampleData(db, { companyId, adminId, agentIds, customerId }) 
     }
   }
 
+  // Added by question, so FAQs the company admin edited or deleted are not duplicated
+  const [[{ maxOrder }]] = await db.execute(
+    "SELECT COALESCE(MAX(sort_order), 0) AS maxOrder FROM faqs WHERE company_id = ?",
+    [companyId],
+  );
+  let sortOrder = Number(maxOrder);
+  for (const [question, answer, category] of CLOTHING_FAQS) {
+    const [found] = await db.execute(
+      "SELECT 1 FROM faqs WHERE company_id = ? AND question = ? LIMIT 1",
+      [companyId, question],
+    );
+    if (found.length > 0) continue;
+    sortOrder += 1;
+    await db.execute(
+      `INSERT INTO faqs (company_id, question, answer, category, is_published, sort_order, created_by)
+       VALUES (?, ?, ?, ?, 1, ?, ?)`,
+      [companyId, question, answer, category, sortOrder, adminId],
+    );
+  }
+
+  const [[orderCount]] = await db.execute(
+    "SELECT COUNT(*) AS n FROM orders WHERE company_id = ? AND customer_id = ?",
+    [companyId, customerId],
+  );
+  if (Number(orderCount.n) === 0) {
+    for (const order of CUSTOMER_ORDERS) {
+      const itemsTotal = order.items.reduce((sum, [, , , quantity, price]) => sum + quantity * price, 0);
+      const [result] = await db.execute(
+        `INSERT INTO orders
+           (company_id, customer_id, order_number, status, shipping_fee, total_amount, currency,
+            shipping_address, carrier, tracking_number, ordered_at, estimated_delivery, delivered_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'LKR', ?, ?, ?, ?, ?, ?)`,
+        [
+          companyId,
+          customerId,
+          order.orderNumber,
+          order.status,
+          order.shippingFee,
+          itemsTotal + order.shippingFee,
+          "42 Galle Road, Colombo 03, Sri Lanka",
+          order.carrier ?? null,
+          order.trackingNumber ?? null,
+          daysFromNow(-order.orderedDaysAgo),
+          order.deliveryInDays === undefined ? null : daysFromNow(order.deliveryInDays),
+          order.deliveredDaysAgo === undefined ? null : daysFromNow(-order.deliveredDaysAgo),
+        ],
+      );
+      for (const [productName, size, color, quantity, unitPrice] of order.items) {
+        await db.execute(
+          `INSERT INTO order_items (order_id, product_name, size, color, quantity, unit_price)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [result.insertId, productName, size, color, quantity, unitPrice],
+        );
+      }
+    }
+  }
+
   const [[ticketCount]] = await db.execute("SELECT COUNT(*) AS n FROM tickets WHERE company_id = ?", [companyId]);
   if (Number(ticketCount.n) === 0) {
     const { customer } = DEMO;
     const customerName = `${customer.firstName} ${customer.lastName}`;
     // [subject, description, status, priority, agent index or null, from customer, days ago]
     const tickets = [
-      ["Cannot download my invoice", "The download button on the billing page does nothing.", "Open", "High", 0, true, 0],
-      ["App crashes on login", "The mobile app closes right after I sign in.", "In Progress", "Urgent", 0, true, 1],
-      ["Question about my plan", "Can I switch from monthly to yearly billing?", "Open", "Medium", null, true, 2],
-      ["Update my shipping address", "Please change my address for future orders.", "Resolved", "Low", 1, true, 4],
-      ["Login page shows error 500", "Several users report a server error on sign-in.", "Open", "Urgent", null, false, 0],
-      ["Feature request: dark mode", "Customers are asking for a dark theme.", "In Progress", "Low", 1, false, 3],
+      ["Exchange chinos for a bigger size", "Order AC-10482: the Slim Fit Chinos (32) are too tight. Can I get a 34?", "Open", "Medium", 0, true, 0],
+      ["Refund for returned sweater", "I returned the Wool Blend Crew Sweater from order AC-10391 but have not seen the refund yet.", "In Progress", "High", 0, true, 1],
+      ["Change delivery address", "Please deliver order AC-10533 to my office instead: 15 Union Place, Colombo 02.", "Open", "Medium", null, true, 0],
+      ["Card charged twice", "My card was charged twice for order AC-10455, which I cancelled.", "Resolved", "High", 1, true, 20],
+      ["Checkout page shows error 500", "Several customers report a server error when paying by card.", "Open", "Urgent", null, false, 0],
+      ["Restock request: linen shirts", "Customers keep asking when the white linen shirts are back in stock.", "In Progress", "Low", 1, false, 3],
     ];
     for (const [subject, description, status, priority, agentIndex, fromCustomer, daysAgo] of tickets) {
       const [result] = await db.execute(
@@ -177,7 +354,7 @@ async function seedSampleData(db, { companyId, adminId, agentIds, customerId }) 
 
   await db.execute(
     `INSERT INTO company_ai_settings (company_id, enabled, assistant_name, greeting, fallback_message, updated_by)
-     VALUES (?, 1, 'Acme Assistant', 'Hi! Ask me anything about your Acme account.',
+     VALUES (?, 1, 'Acme Assistant', 'Hi! I can help with your orders, delivery, returns and sizing. What do you need?',
              'I could not find the answer, so I am handing you to our support team.', ?)
      ON DUPLICATE KEY UPDATE company_id = company_id`,
     [companyId, adminId],

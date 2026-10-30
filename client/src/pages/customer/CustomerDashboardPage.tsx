@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { OverviewStatCard } from "../../components/company/OverviewStatCard";
 import { useCustomerAuthError } from "../../components/customer/useCustomerAuthError";
 import { useCustomerPortal } from "../../components/customer/useCustomerPortal";
+import { OrderList } from "../../components/customer/OrderList";
 import { DashboardHero } from "../../components/dashboard/DashboardHero";
 import {
   DashboardCard,
@@ -18,8 +19,8 @@ import {
   timeAgo,
 } from "../../components/dashboard/dashboardFormat";
 import { ROUTES, customerTicketPath } from "../../router/routes";
-import { listCustomerFaqs, listCustomerTickets } from "../../services/customer";
-import type { CustomerTicket, PublicFaq } from "../../types/customer";
+import { listCustomerFaqs, listCustomerOrders, listCustomerTickets } from "../../services/customer";
+import type { CustomerOrder, CustomerTicket, PublicFaq } from "../../types/customer";
 
 interface CustomerCounts {
   open: number;
@@ -36,6 +37,7 @@ export function CustomerDashboardPage() {
   const [counts, setCounts] = useState<CustomerCounts | null>(null);
   const [recent, setRecent] = useState<CustomerTicket[]>([]);
   const [faqs, setFaqs] = useState<PublicFaq[]>([]);
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,12 +46,13 @@ export function CustomerDashboardPage() {
     setError(null);
     try {
       // Status counts come from each filtered list's total, so only one row is fetched each
-      const [latest, open, inProgress, resolved, faqResult] = await Promise.all([
+      const [latest, open, inProgress, resolved, faqResult, orderList] = await Promise.all([
         listCustomerTickets({ page: 1, limit: 5 }),
         listCustomerTickets({ status: "Open", page: 1, limit: 1 }),
         listCustomerTickets({ status: "In Progress", page: 1, limit: 1 }),
         listCustomerTickets({ status: "Resolved", page: 1, limit: 1 }),
         listCustomerFaqs().catch(() => ({ faqs: [], categories: [] })),
+        listCustomerOrders().catch(() => []),
       ]);
       setRecent(latest.tickets);
       setCounts({
@@ -59,6 +62,7 @@ export function CustomerDashboardPage() {
         total: latest.pagination.total,
       });
       setFaqs(faqResult.faqs.slice(0, 4));
+      setOrders(orderList.slice(0, 5));
     } catch (err) {
       if (handleAuthError(err)) return;
       setError("Could not load your support overview. Please try again.");
@@ -123,38 +127,48 @@ export function CustomerDashboardPage() {
           </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <DashboardCard
-              title="My recent tickets"
-              icon="history"
-              action={{ label: "View all", to: ROUTES.CUSTOMER_TICKETS }}
-              className="lg:col-span-2"
-            >
-              <TicketList
-                emptyText="You haven't raised any tickets yet."
-                items={recent.map((ticket) => ({
-                  ticketId: ticket.ticketId,
-                  subject: ticket.subject,
-                  status: ticket.status,
-                  meta: `${
-                    ticket.assigneeName ? `Handled by ${ticket.assigneeName}` : "Waiting for an agent"
-                  } · updated ${timeAgo(ticket.updatedAt)}`,
-                  to: customerTicketPath(ticket.ticketId),
-                }))}
-              />
-              {recent.length === 0 ? (
-                <div className="text-center -mt-2">
-                  <Link
-                    to={ROUTES.CUSTOMER_NEW_TICKET}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#6D5EF5] text-white text-xs font-bold no-underline hover:bg-[#5b4be8]"
-                  >
-                    <span className="material-symbols-outlined text-base" aria-hidden="true">
-                      add
-                    </span>
-                    Raise your first ticket
-                  </Link>
-                </div>
-              ) : null}
-            </DashboardCard>
+            <div className="lg:col-span-2 space-y-6 min-w-0">
+              <DashboardCard
+                title="My recent tickets"
+                icon="history"
+                action={{ label: "View all", to: ROUTES.CUSTOMER_TICKETS }}
+              >
+                <TicketList
+                  emptyText="You haven't raised any tickets yet."
+                  items={recent.map((ticket) => ({
+                    ticketId: ticket.ticketId,
+                    subject: ticket.subject,
+                    status: ticket.status,
+                    meta: `${
+                      ticket.assigneeName ? `Handled by ${ticket.assigneeName}` : "Waiting for an agent"
+                    } · updated ${timeAgo(ticket.updatedAt)}`,
+                    to: customerTicketPath(ticket.ticketId),
+                  }))}
+                />
+                {recent.length === 0 ? (
+                  <div className="text-center -mt-2">
+                    <Link
+                      to={ROUTES.CUSTOMER_NEW_TICKET}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#6D5EF5] text-white text-xs font-bold no-underline hover:bg-[#5b4be8]"
+                    >
+                      <span className="material-symbols-outlined text-base" aria-hidden="true">
+                        add
+                      </span>
+                      Raise your first ticket
+                    </Link>
+                  </div>
+                ) : null}
+              </DashboardCard>
+
+              <DashboardCard title="My orders" icon="shopping_bag">
+                <OrderList orders={orders} />
+                {orders.length > 0 && assistant.enabled ? (
+                  <p className="mt-3 text-[11px] text-[#787586]">
+                    Questions about an order? Ask {assistant.assistantName} with the order number.
+                  </p>
+                ) : null}
+              </DashboardCard>
+            </div>
 
             <div className="space-y-6">
               {assistant.enabled ? (

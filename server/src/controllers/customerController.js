@@ -13,6 +13,10 @@ function createCustomerController(customerService) {
     return send(response, 200, data);
   }
 
+  async function listOrders(request, response) {
+    return send(response, 200, await customerService.listOrders(request.auth));
+  }
+
   async function listTickets(request, response) {
     const data = await customerService.listTickets(request.auth, request.query);
     return send(response, 200, data);
@@ -40,7 +44,7 @@ function createCustomerController(customerService) {
     return send(response, 201, data);
   }
 
-  return { me, listFaqs, listTickets, getTicket, createReply, createTicket };
+  return { me, listFaqs, listOrders, listTickets, getTicket, createReply, createTicket };
 }
 
 module.exports = { createCustomerController };

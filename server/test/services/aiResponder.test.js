@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const {
   createAiResponder,
   buildSystemPrompt,
+  buildCustomerContext,
   toChatMessages,
   parseVerdict,
   matchFaqs,
@@ -116,6 +117,7 @@ test("the model's verdict is used and the request targets the configured model",
   const [request] = client.requests;
   assert.equal(request.model, "nvidia/nemotron-3-ultra-550b-a55b");
   assert.deepEqual(request.chat_template_kwargs, { enable_thinking: false });
+  assert.deepEqual(request.response_format, { type: "json_object" });
   assert.equal(request.max_tokens, 1024);
   assert.equal(request.messages[0].role, "system");
   assert.deepEqual(request.messages.slice(1), [
@@ -143,6 +145,18 @@ test("a filtered or cut-off reply hands over to a human", async () => {
   }
 });
 
+test("an unusable reply is retried once before giving up", async () => {
+  const replies = [completion("Sure! Our hours are 8 to 6."), completion(JSON.stringify(goodVerdict))];
+  const requests = [];
+  const client = {
+    chat: { completions: { create: async (request) => (requests.push(request), replies.shift()) } },
+  };
+  const verdict = await createAiResponder({ client }).respond({ companyName: "Acme", settings, faqs, history });
+  assert.equal(verdict.source, "ai");
+  assert.equal(verdict.confidence, 95);
+  assert.equal(requests.length, 2);
+});
+
 test("API failures and unusable replies fall back to FAQ matching", async () => {
   for (const reply of [new Error("network down"), completion("I think you should reset it.")]) {
     const responder = createAiResponder({ client: fakeClient(reply) });
@@ -164,6 +178,88 @@ test("FAQ matching answers covered questions, flags unknown ones and human reque
   const human = matchFaqs({ settings, faqs, question: "I want to talk to a real person, my account was hacked" });
   assert.equal(human.needsHuman, true);
   assert.equal(human.ticketPriority, "Urgent");
+});
+
+const orders = [
+  {
+    orderNumber: "AC-10517",
+    status: "Shipped",
+    shippingFee: 0,
+    totalAmount: 13800,
+    currency: "LKR",
+    carrier: "Acme Express",
+    trackingNumber: "AX7731942LK",
+    orderedAt: "2026-10-27T09:00:00.000Z",
+    estimatedDelivery: "2026-10-31",
+    deliveredAt: null,
+    items: [
+      { productName: "Denim Trucker Jacket", size: "L", color: "Indigo", quantity: 1, unitPrice: 8900 },
+      { productName: "Graphic Cotton T-Shirt", size: "L", color: "Black", quantity: 2, unitPrice: 2450 },
+    ],
+  },
+  {
+    orderNumber: "AC-10482",
+    status: "Delivered",
+    shippingFee: 0,
+    totalAmount: 12700,
+    currency: "LKR",
+    orderedAt: "2026-10-12T09:00:00.000Z",
+    estimatedDelivery: "2026-10-16",
+    deliveredAt: "2026-10-15T14:00:00.000Z",
+    items: [{ productName: "Classic Oxford Shirt", size: "M", color: "White", quantity: 2, unitPrice: 3950 }],
+  },
+];
+
+test("the customer's orders are described in their own system message", () => {
+  const text = buildCustomerContext({ name: "Casey Customer", orders }, new Date("2026-10-30T10:00:00Z"));
+  assert.match(text, /Today is 2026-10-30\. You are talking to Casey Customer\./);
+  assert.match(text, /<order number="AC-10517">/);
+  assert.match(text, /tracking number: AX7731942LK/);
+  assert.match(text, /estimated delivery: 2026-10-31/);
+  assert.match(text, /2 x Graphic Cotton T-Shirt \(size L, Black\) at LKR 2,450\.00/);
+  assert.match(text, /total: LKR 13,800\.00/);
+  // A delivered order shows when it arrived, not the old estimate
+  assert.match(text, /delivered: 2026-10-15/);
+  assert.doesNotMatch(text, /estimated delivery: 2026-10-16/);
+
+  assert.match(buildCustomerContext({ name: null, orders: [] }), /no orders/);
+  assert.equal(buildCustomerContext(undefined), null);
+});
+
+test("orders are sent after the company prompt and before the conversation", async () => {
+  const client = fakeClient(completion(JSON.stringify(goodVerdict)));
+  await createAiResponder({ client }).respond({
+    companyName: "Acme",
+    settings,
+    faqs,
+    history,
+    customer: { name: "Casey Customer", orders },
+  });
+  const [request] = client.requests;
+  assert.deepEqual(request.messages.map((m) => m.role), ["system", "system", "assistant", "user"]);
+  assert.match(request.messages[1].content, /AC-10517/);
+  // The company prompt itself stays the same for every customer
+  assert.equal(request.messages[0].content, buildSystemPrompt({ companyName: "Acme", settings, faqs }));
+});
+
+test("FAQ matching answers order status questions from the customer's orders", () => {
+  const latest = matchFaqs({ settings, faqs, orders, question: "Where is my order?" });
+  assert.equal(latest.confidence, 85);
+  assert.match(latest.answer, /Order AC-10517 \(1 x Denim Trucker Jacket, 2 x Graphic Cotton T-Shirt\) has shipped with Acme Express \(tracking AX7731942LK\) and should arrive by 2026-10-31\./);
+  assert.match(latest.answer, /Order AC-10482 .* was delivered on 2026-10-15\./);
+
+  const byNumber = matchFaqs({ settings, faqs, orders, question: "status of ac-10482 please" });
+  assert.match(byNumber.answer, /^Order AC-10482/);
+  assert.doesNotMatch(byNumber.answer, /AC-10517/);
+
+  // Unknown order numbers, order changes and customers without orders fall back to FAQs
+  assert.equal(matchFaqs({ settings, faqs, orders, question: "Where is order AC-99999?" }).confidence, 0);
+  assert.notEqual(matchFaqs({ settings, faqs, orders, question: "I want to cancel my order" }).confidence, 85);
+  assert.notEqual(
+    matchFaqs({ settings, faqs, orders, question: "My parcel was delivered to the wrong city" }).confidence,
+    85,
+  );
+  assert.notEqual(matchFaqs({ settings, faqs, orders: [], question: "Where is my order?" }).confidence, 85);
 });
 
 test("without an NVIDIA API key the responder uses FAQ matching", async () => {

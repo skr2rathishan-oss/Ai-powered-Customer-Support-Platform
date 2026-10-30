@@ -41,3 +41,19 @@ yarn-error.log*
 .vite/
 .tmp*
 
+# AI assistant and tooling config (local only)
+CLAUDE.md
+.claude/
+.agents/
+.playwright-cli/
+
+# Local working docs, report and screenshots (submitted separately)
+docs/plans/
+docs/report/
+docs/screenshots/
+docs/PROGRESS.md
+
+# Third-party references and scratch folders
+awesome-design-md/
+_to_delete/
+

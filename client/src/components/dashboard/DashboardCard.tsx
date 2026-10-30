@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Link } from "react-router";
 
 interface DashboardCardProps {
@@ -11,10 +11,14 @@ interface DashboardCardProps {
 
 /** White panel with a titled header, used for every dashboard section. */
 export function DashboardCard({ title, icon, action, className = "", children }: DashboardCardProps) {
+  const headingId = useId();
   return (
-    <section className={`bg-white border border-[#e2e4e9] rounded-2xl p-5 sm:p-6 shadow-2xs min-w-0 ${className}`}>
+    <section
+      aria-labelledby={headingId}
+      className={`bg-white border border-[#e2e4e9] rounded-2xl p-5 sm:p-6 shadow-2xs min-w-0 ${className}`}
+    >
       <div className="flex items-center justify-between gap-3 mb-5">
-        <h2 className="flex items-center gap-2 font-bold text-sm text-[#1c1b23]">
+        <h2 id={headingId} className="flex items-center gap-2 font-bold text-sm text-[#1c1b23]">
           <span className="material-symbols-outlined text-lg text-[#6D5EF5]" aria-hidden="true">
             {icon}
           </span>
