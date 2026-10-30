@@ -2,15 +2,6 @@
 
 SupportPilot is a **multi-tenant customer support platform**. A Platform Administrator onboards companies, though companies can also register themselves. Each company invites its own support agents, publishes FAQ articles, and gets an **AI assistant** that answers customers first. Anything the AI can't solve becomes a **ticket assigned to a human agent**. There are four roles, and each has its own portal and dashboard.
 
-| | |
-|---|---|
-| **Student** | Mahendran Rathishan (EG/2023/5827) |
-| **Module** | EC4307 Web Application Development: Mini Project |
-| **Institution** | Department of Electrical and Information Engineering, Faculty of Engineering, University of Ruhuna |
-| **Repository** | https://github.com/skr2rathishan-oss/Ai-powered-Customer-Support-Platform |
-| **Database** | MySQL-compatible **TiDB Cloud** (14 tables, see [Database Design](#-database-design)) |
-
----
 
 ## 📑 Contents
 
